@@ -2,22 +2,31 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export const runtime = "nodejs"; // ensure Node environment
+export const runtime = "nodejs";
 
 const BUCKET = "client-assets";
 const FOLDER = "uploads";
-const MAX_BYTES = 8 * 1024 * 1024; // 8MB soft limit (adjustable)
+
+// Make limit configurable via env; default to 8MB for images, bump for videos as needed
+const DEFAULT_MAX_MB = process.env.UPLOAD_MAX_MB ? parseInt(process.env.UPLOAD_MAX_MB, 10) : 8;
+const MAX_BYTES = (Number.isFinite(DEFAULT_MAX_MB) ? DEFAULT_MAX_MB : 8) * 1024 * 1024;
 
 function getExt(name: string) {
   const parts = name.split(".");
-  return parts.length > 1 ? (parts.pop() || "png").toLowerCase() : "png";
+  return parts.length > 1 ? (parts.pop() || "bin").toLowerCase() : "bin";
+}
+
+function human(n: number) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
 
-    // Accept either single 'file' or multiple 'files' keys
+    // Accept either single 'file' or multiple 'files'
     const singleFile = formData.get("file") as File | null;
     const multiFiles = formData.getAll("files").filter(Boolean) as File[];
 
@@ -34,15 +43,25 @@ export async function POST(req: Request) {
     for (const file of filesToProcess) {
       if (!(file instanceof File)) continue;
 
+      // Helpful debug logging for troubleshooting size errors:
+      const name = file.name || "unnamed";
+      const clientSize = (file as any).size ?? null;
+
       const arrayBuffer = await file.arrayBuffer();
-      if (arrayBuffer.byteLength > MAX_BYTES) {
+      const serverSize = arrayBuffer.byteLength;
+
+      console.log(`[uploads] received file: ${name}; client-reported size=${human(clientSize ?? serverSize)}; server byteLength=${human(serverSize)}; MAX=${human(MAX_BYTES)}`);
+
+      if (serverSize > MAX_BYTES) {
         return NextResponse.json(
-          { error: `File too large (max ${Math.round(MAX_BYTES / 1024 / 1024)}MB)` },
+          {
+            error: `File too large: '${name}' is ${human(serverSize)} (server) / ${human(clientSize ?? 0)} (client) — max allowed ${human(MAX_BYTES)}.`,
+          },
           { status: 413 }
         );
       }
 
-      const ext = getExt(file.name || "upload.png");
+      const ext = getExt(file.name || "upload.bin");
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
       const filePath = `${FOLDER}/${filename}`;
       const buffer = Buffer.from(arrayBuffer);
@@ -50,7 +69,7 @@ export async function POST(req: Request) {
       const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
         .from(BUCKET)
         .upload(filePath, buffer, {
-          contentType: file.type || `image/${ext}`,
+          contentType: file.type || `application/octet-stream`,
           cacheControl: "3600",
           upsert: false,
         });
@@ -65,14 +84,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Upload succeeded but no path returned" }, { status: 500 });
       }
 
-      // NOTE: getPublicUrl returns { data: { publicUrl: string } }
-      // it does not return an `error` property, so do not destructure `error`.
       const publicUrlResult = supabaseAdmin.storage.from(BUCKET).getPublicUrl(uploadData.path);
-
-      // safe access:
-      const publicUrl = (publicUrlResult && (publicUrlResult as any).data && (publicUrlResult as any).data.publicUrl)
-        ? (publicUrlResult as any).data.publicUrl
-        : null;
+      const publicUrl =
+        (publicUrlResult && (publicUrlResult as any).data && (publicUrlResult as any).data.publicUrl) ||
+        null;
 
       if (!publicUrl) {
         console.error("[uploads] publicUrl missing for path:", uploadData.path, "raw:", publicUrlResult);

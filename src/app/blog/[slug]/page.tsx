@@ -1,42 +1,30 @@
 // src/app/blog/[slug]/page.tsx
+// Server component (no "use client") — exports metadata and reads data server-side.
+
 import Image from "next/image";
 import Header from "@/components/Header";
-import { readClientsData } from "@/lib/data"; // adjust if your helper is located elsewhere
+import { readClientsData } from "@/lib/data";
+import BackButtonClient from "./BackButtonClient"; // if present
+import MediaGallery from "@/components/MediaGallery"; // client component
 
 export const metadata = {
   title: "Blog",
 };
 
-function normalizeImagesField(raw: any): string[] {
-  // Accept array, JSON-stringified array, or null/undefined
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed.filter(Boolean).map(String);
-    } catch (e) {
-      // not JSON — treat as single-image string
-      return [raw];
-    }
-  }
-  // unknown shape
-  return [];
-}
-
 export default async function BlogDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: { slug: string } | Promise<{ slug: string }>;
 }) {
-  const { slug } = params;
+  const resolvedParams = await params;
+  const slug = String(resolvedParams?.slug ?? "").trim();
 
-  // Load clients (or fetch blog by slug if you have an API)
   const clients = await readClientsData();
-  const client = (clients || []).find(
-    (c: any) =>
-      (c.blog_slug ?? c.blogSlug ?? "").toString().trim() === slug.toString().trim()
-  );
+
+  const client = (clients || []).find((c: any) => {
+    const s = (c.blog_slug ?? c.blogSlug ?? c.slug ?? "").toString().trim();
+    return s === slug;
+  });
 
   if (!client) {
     return (
@@ -53,15 +41,32 @@ export default async function BlogDetailPage({
   const title = client.blog_title ?? client.blogTitle ?? "Untitled";
   const bodyHtml = client.blog_body_html ?? client.blogBodyHtml ?? "";
 
-  // normalize images field coming from DB (could be jsonb array or string)
-  const images: string[] = normalizeImagesField(client.images ?? client.images_json ?? client.imagesArray);
+  // normalize images
+  const images: string[] =
+    Array.isArray(client.images) && client.images.length > 0
+      ? client.images
+      : Array.isArray(client.image) && client.image.length > 0
+      ? client.image
+      : (client.images || client.image || []) as string[];
 
-  // figure out the feature image (try the DB column first, then other names, then fallback to first gallery image)
   const feature =
     client.blog_feature_image ??
     client.blogFeatureImage ??
+    client.blog_feature_image_url ??
     client.blogFeatureImageUrl ??
-    (images.length > 0 ? images[0] : null);
+    (images && images.length > 0 ? images[0] : null);
+
+  // normalize videos — Postgres text[] should already be array; handle stringified JSON as fallback
+  const videosRaw = client.videos ?? client.video_urls ?? client.videoUrls ?? client.videos_list ?? [];
+  const videos: string[] = Array.isArray(videosRaw)
+    ? videosRaw
+    : (typeof videosRaw === "string" && videosRaw ? JSON.parse(videosRaw) : []);
+
+  // Build unified media list
+  const media = [
+    ...(images || []).map((src: string) => ({ type: "image" as const, src, alt: title })),
+    ...(videos || []).map((src: string) => ({ type: "video" as const, src, alt: title })),
+  ];
 
   return (
     <main
@@ -70,6 +75,9 @@ export default async function BlogDetailPage({
     >
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative z-10 max-w-screen-xl mx-auto px-6 py-16">
+        {/* optional BackButtonClient */}
+        {typeof BackButtonClient === "function" ? <BackButtonClient /> : null}
+
         <Header />
 
         <article className="bg-white rounded-lg shadow overflow-hidden">
@@ -86,25 +94,22 @@ export default async function BlogDetailPage({
           <div className="p-8">
             <h1 className="text-3xl font-bold mb-4">{title}</h1>
 
-            {/* gallery: prefer `images` array; show up to 4 */}
-            {images.length > 0 && (
+            {media && media.length > 0 && (
               <section className="mb-6">
                 <h3 className="text-sm text-gray-600 mb-2">Gallery</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                  {images.slice(0, 4).map((src: string, idx: number) => (
-                    <div key={idx} className="relative w-full h-36 rounded overflow-hidden bg-gray-100">
-                      <Image src={src} alt={`${title} - image ${idx + 1}`} fill style={{ objectFit: "cover" }} />
-                    </div>
-                  ))}
-                </div>
+                <MediaGallery media={media} />
               </section>
             )}
 
-            <div
-              className="prose max-w-none"
-              // you're storing HTML — sanitize it on the server or install a client sanitizer (dompurify) if needed
-              dangerouslySetInnerHTML={{ __html: bodyHtml }}
-            />
+            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+
+            {client.blog_slug && (
+              <div className="mt-6">
+                <a href={`/blog/${client.blog_slug}`} className="inline-block bg-orange-500 text-white px-4 py-2 rounded">
+                  Read full blog
+                </a>
+              </div>
+            )}
           </div>
         </article>
       </div>

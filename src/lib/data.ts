@@ -5,39 +5,89 @@ import path from "path";
 
 export type ClientRow = Record<string, any>;
 
-function parseImagesField(raw: any): string[] {
+/**
+ * Parse a DB column that may contain:
+ *  - an array (native text[] from Postgres / JSON array)
+ *  - a JSON stringified array
+ *  - a comma-separated string
+ *  - an object with a `urls`/`items`/`files` array
+ *  - or other nested structures
+ *
+ * Returns a cleaned string[].
+ */
+function parseMediaField(raw: any): string[] {
   try {
-    if (!raw) return [];
+    if (!raw && raw !== 0) return [];
+
+    // Already an array
     if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
+
+    // Plain string: try JSON.parse then comma-split
     if (typeof raw === "string") {
       const s = raw.trim();
       if (!s) return [];
-      // try parse JSON string (common when storing as text/json)
+
+      // Try to parse JSON
       try {
         const parsed = JSON.parse(s);
         if (Array.isArray(parsed)) return parsed.filter(Boolean).map(String);
+        // If parsed is object with known keys
+        if (parsed && typeof parsed === "object") {
+          // try common array fields
+          if (Array.isArray((parsed as any).urls)) return (parsed as any).urls.filter(Boolean).map(String);
+          if (Array.isArray((parsed as any).files)) return (parsed as any).files.filter(Boolean).map(String);
+        }
       } catch {
-        // not JSON — allow comma separated fallback
+        // not JSON — fall back to comma-separated
         return s.split(",").map((x) => x.trim()).filter(Boolean);
       }
     }
-    // if raw is object (maybe jsonb with nested) try common keys
+
+    // If raw is object (e.g. jsonb with nested arrays)
     if (typeof raw === "object") {
-      if (Array.isArray(raw.urls)) return raw.urls.filter(Boolean).map(String);
-      // flatten values
-      return Object.values(raw)
+      // common keys
+      if (Array.isArray((raw as any).urls)) return (raw as any).urls.filter(Boolean).map(String);
+      if (Array.isArray((raw as any).files)) return (raw as any).files.filter(Boolean).map(String);
+      if (Array.isArray((raw as any).items)) return (raw as any).items.filter(Boolean).map(String);
+
+      // flatten simple values
+      const flattened = Object.values(raw)
         .flat()
         .filter(Boolean)
         .map(String);
+      if (flattened.length > 0) return flattened;
     }
   } catch (e) {
-    // ignore parsing errors
+    // ignore and return empty below
+    // console.warn('parseMediaField error', e);
   }
   return [];
 }
 
+function parseImagesField(raw: any): string[] {
+  return parseMediaField(raw);
+}
+
+function parseVideosField(raw: any): string[] {
+  return parseMediaField(raw);
+}
+
 function normalizeRow(row: Record<string, any>) {
-  const images = parseImagesField(row.images ?? row.image_urls ?? row.imageUrls ?? row.images_json ?? null);
+  const images = parseImagesField(row.images ?? row.image_urls ?? row.imageUrls ?? row.images_json ?? row.image ?? null);
+  const videos = parseVideosField(row.videos ?? row.video_urls ?? row.videoUrls ?? row.videos_json ?? row.video ?? null);
+
+  // choose sensible feature image: explicit feature field -> first image -> null
+  const blogFeatureFromRow =
+    row.blog_feature_image_url ??
+    row.blog_feature_image ??
+    row.blogFeatureImageUrl ??
+    row.blogFeatureImage ??
+    row.feature_image ??
+    row.featureImage ??
+    null;
+
+  const blogFeatureImageUrl = blogFeatureFromRow ?? (images.length > 0 ? images[0] : null);
+
   return {
     id: String(row.id ?? row.client_name ?? Math.random()),
     clientName: row.client_name ?? row.clientName ?? row.name ?? "",
@@ -45,16 +95,11 @@ function normalizeRow(row: Record<string, any>) {
     blogTitle: row.blog_title ?? row.blogTitle ?? row.title ?? "",
     blogSlug: row.blog_slug ?? row.blogSlug ?? row.slug ?? "",
     blogBodyHtml: row.blog_body_html ?? row.blogBodyHtml ?? row.body ?? "",
-    blogFeatureImageUrl:
-      row.blog_feature_image??
-      row.blog_feature_image ??
-      row.blogFeatureImageUrl ??
-      row.feature_image ??
-      row.featureImage ??
-      null,
+    blogFeatureImageUrl,
     ctaText: row.cta_text ?? row.ctaText ?? "Read full blog",
     createdAt: row.created_at ?? row.createdAt ?? null,
     images,
+    videos,
     bodyData: row.body_data ?? row.bodyData ?? null,
     raw: row,
   };
@@ -64,7 +109,7 @@ function normalizeRow(row: Record<string, any>) {
  * readClientsData
  * - First tries to fetch from Supabase (server/service role).
  * - If that fails (e.g. no DB during local dev), falls back to reading data/clients.json.
- * - Returns normalized rows (camelCase, images array, bodyData).
+ * - Returns normalized rows (camelCase, images/videos arrays, bodyData).
  */
 export async function readClientsData(): Promise<ClientRow[]> {
   // Try Supabase first (server-side)

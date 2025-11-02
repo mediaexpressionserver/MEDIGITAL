@@ -8,6 +8,7 @@ import logoData, { type LogoItem } from "@/data/logoData";
 import Link from "next/link";
 import ClientsCarousel from "@/components/ClientsCarousel";
 import HeaderScrollListener from "@/components/HeaderScrollListener";
+import useForceRepaintOnNav from "@/hooks/useForceRepaintOnNav";
 
 const services: ServiceItem[] = [
   { label: "Social Media Marketing", iconSrc: "/images/Socialmediamarketting.png" },
@@ -31,6 +32,9 @@ export default function HorizontalScrollWebsite() {
   const [viewportWidth, setViewportWidth] = useState<number>(0);
   const [viewportHeight, setViewportHeight] = useState<number>(0);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+
+
+useForceRepaintOnNav(containerRef);
 
   // ---------- hooks & tiny handlers (paste here, only once) ----------
   const [modalOpen, setModalOpen] = useState(false);
@@ -185,6 +189,95 @@ export default function HorizontalScrollWebsite() {
       console.error("handleNavClick error:", err);
     }
   };
+
+
+ function forceRepaint(el: HTMLElement | null) {
+    if (!el) return;
+    try {
+      // 1) apply a GPU layer hint (cheap)
+      el.style.willChange = "transform, opacity";
+      // 2) small transform to nudge the compositor
+      el.style.transform = "translateZ(0)";
+      // 3) force reflow
+      // @ts-ignore
+      void el.offsetHeight;
+      // 4) tiny scroll nudge if it is scrollable (keeps layout intact)
+      try {
+        el.scrollBy?.({ left: 1, behavior: "instant" as any });
+        el.scrollBy?.({ left: -1, behavior: "instant" as any });
+      } catch {}
+      // restore style (safe to leave willChange or clear it)
+      el.style.transform = "";
+      // clear will-change after a short delay so browser can optimize normally
+      setTimeout(() => {
+        try {
+          el.style.willChange = "";
+        } catch {}
+      }, 300);
+    } catch (err) {
+      // fallback: force reflow only
+      try {
+        void el.getBoundingClientRect();
+      } catch {}
+    }
+  }
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    // Run on first mount (next paint)
+    requestAnimationFrame(() => forceRepaint(el));
+
+    // Handler that calls repaint on navigation events
+    const onVisible = () => forceRepaint(el);
+
+    // pageshow fires on back/forward navigation (important)
+    window.addEventListener("pageshow", onVisible);
+    // popstate for some routers/browsers
+    window.addEventListener("popstate", onVisible);
+    // visibilitychange covers tab switching and some navigation scenarios
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") onVisible();
+    });
+
+    // optional: also handle resize (if layout depends on viewport)
+    window.addEventListener("resize", onVisible);
+
+    return () => {
+      window.removeEventListener("pageshow", onVisible);
+      window.removeEventListener("popstate", onVisible);
+      document.removeEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") onVisible();
+      });
+      window.removeEventListener("resize", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
+
+  useEffect(() => {
+  const el = containerRef.current;
+  if (!el) return;
+
+  // Delay until next paint so layout is complete
+  requestAnimationFrame(() => {
+    try {
+      // tiny scroll nudge forces a repaint
+      el.scrollBy({ left: 1, behavior: "instant" as any });
+      el.scrollBy({ left: -1, behavior: "instant" as any });
+    } catch {
+      // fallback: force style reflow
+      if (el) {
+        // force reflow read
+        void el.getBoundingClientRect();
+        // force GPU layer repaint
+        el.style.transform = "translateZ(0)";
+      }
+    }
+  });
+}, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1021,16 +1114,23 @@ useEffect(() => {
   }
 
   // Desktop Layout (unchanged)
-  return (
-    <>
-     {!isMobile && <HeaderScrollListener />}
-      {/* Horizontal fixed container */}
-<div
-  ref={containerRef}
-  data-horizontal-container
-  className="fixed top-0 left-0 h-screen flex"
-  style={{ width: containerWidth ? `${containerWidth}px` : "300vw", transformOrigin: "top left", willChange: "transform", zIndex: 30 }}
->
+return (
+  
+  <div className="min-w-[1280px] overflow-x-auto">
+    
+    {!isMobile && <HeaderScrollListener />}
+    {/* Horizontal fixed container */}
+    <div
+      ref={containerRef}
+      data-horizontal-container
+      className="fixed top-0 left-0 h-screen flex"
+      style={{
+        width: containerWidth ? `${containerWidth}px` : "300vw",
+        transformOrigin: "top left",
+        willChange: "transform",
+        zIndex: 30,
+      }}
+    >
 
         {/* Section 1 - Hero */}
         <section data-horizontal-section 
@@ -1172,12 +1272,12 @@ useEffect(() => {
         </section>
 
         {/* Section 2 - Ideas */}
-        <section data-horizontal-section className="w-screen h-screen flex relative">
+        <section id="ourwaydesktop" data-horizontal-section className="w-screen h-screen flex relative">
           <div className="flex-1 flex flex-col justify-center px-10 bg-white relative z-10 translate-x-[100px]">
             <h2 className="text-7xl font-extrabold text-[#EEAA45] leading-tight">
               Ideas That <br /> Break <br /> Through.
             </h2>
-            <p className="mt-4 text-[11px] text-gray-600 max-w-[400px]">
+            <p className="mt-4 text-[18px] text-gray-600 max-w-[400px]">
               We dont play it safe—we push ideas further. A team that tries,
               learns, and reinvents until your brand{" "}
               <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
@@ -1199,29 +1299,43 @@ useEffect(() => {
           </div>
         </section>
 
-        {/* Section 3 - Services */}
-        <section data-horizontal-section  id="servicesdesktop"  className="w-screen h-screen flex justify-between items-center px-10 bg-gray-200">
-        <div className="p-6 max-w-xl mx-auto translate-x-[700px] w-[400px]">
+        {/* Section 3 - Services (stable when zooming) */}
+<section
+  data-horizontal-section
+  id="servicesdesktop"
+  className="w-screen h-screen flex flex-nowrap items-center px-12 bg-gray-200"
+  style={{ minWidth: "1200px" }} // keeps layout from collapsing on zoom-out (adjust as needed)
+>
+  {/* Left column: service pills (kept constrained) */}
+  <div className="flex-shrink-0 w-[420px] p-6 translate-x-[800px]">
+    <div className="max-w-[400px] mx-auto">
       <ServicePillList
-  items={services}
-  iconSize={60}        // makes the circle larger
-  iconInnerScale={0.7} // makes the icon inside fill more space
-  overlap={0.55}        // increases how much the circle overlaps the pill
-/>
+        items={services}
+        iconSize={60}
+        iconInnerScale={0.7}
+        overlap={0.55}
+      />
     </div>
+  </div>
 
-          <div className="w-1/2 text-left translate-x-[-400px]">
-            <h2 className="text-7xl font-extrabold text-black mb-4">
-              Need a <br />digital<br /> marketing<br /> partner?
-            </h2>
-            <div style={{ width: "70%", height: "2px", backgroundColor: "black" }}></div>
-            <p className="text-gray-600 max-w-lg  ml-auto text-left -translate-x-[180px] translate-y-[-0px] text-[15px] my-5 py-2">
-              Marketing doesn&apos;t have to be complicated. With us, it&apos;s<br /> smart,
-              simple, and effective. Let&apos;s get started.
-            </p>
-            <div style={{ width: "70%", height: "2px", backgroundColor: "black" }}></div>
-          </div>
-        </section>
+  {/* Right column: text — use padding instead of translate to shift */}
+  <div className="flex-1 min-w-0 translate-x-[-300px]">
+    <div className="max-w-2xl pl-6">
+      <h2 className="text-5xl lg:text-7xl font-extrabold text-black mb-4 leading-tight">
+        Need a <br />digital<br />marketing<br />partner?
+      </h2>
+
+      <div className="w-3/4 h-[2px] bg-black my-4" />
+
+      <p className="text-gray-600 text-base lg:text-[15px] max-w-lg my-5">
+        Marketing doesn&apos;t have to be complicated. With us, it&apos;s smart,
+        simple, and effective. Let&apos;s get started.
+      </p>
+
+      <div className="w-3/4 h-[2px] bg-black mt-4" />
+    </div>
+  </div>
+</section>
       </div>
 
       {/* Vertical Sections Container */}
@@ -1238,7 +1352,7 @@ useEffect(() => {
         }}
       >
         {/* Section 4 - Digital Marketing */}
-        <section id="ourwaydesktop"
+        <section 
           className="w-screen h-screen relative flex flex-col justify-center items-center bg-black text-white"
           style={{
             backgroundImage: "url('/images/digital-marketing.png')",
@@ -1248,14 +1362,23 @@ useEffect(() => {
           }}
         >
           <div className="text-left z-10">
-            <h2 className="text-7xl font-extrabold text-[#EEAA45] mb-6 translate-x-[-250px] translate-y-[100px]">
-              Our<br></br>Way
-            </h2>
-          </div>
+  <h2
+    className="text-7xl font-extrabold text-[#EEAA45] mb-6 translate-x-[-370px] translate-y-[100px]"
+    style={{
+      textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)"
+    }}
+  >
+    Our Way
+  </h2>
+</div>
 
           <div className="relative flex flex-col items-center text-center text-white mt-20 translate-y-[50px]">
   {/* === Headings row === */}
-  <div className="grid grid-cols-3 gap-12 w-full max-w-5xl mb-3">
+  <div className="grid grid-cols-3 gap-12 w-full max-w-5xl mb-3 "
+  style={{
+      textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)"
+    }}
+  >
     <div>
       <h2 className="text-3xl font-extrabold text-[#e29a4d] mb-1">Listen</h2>
     </div>
@@ -1352,122 +1475,67 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
 </div>
         </section>
 
-        {/* Section 5 - Design Process */}
-        <section  className="w-screen h-screen relative flex items-center justify-between bg-white px-10 -translate-x-5">
-          <div className="flex items-center justify-start w-full h-full translate-y-[-200px] sm:translate-x-[750px]">
-  {/* Big number 4 */}
-  <div className="text-[150px] font-extrabold text-[#EEAA45] leading-none flex-shrink-0">
-    4
-  </div>
-
-  {/* Text block (aligned perfectly with the height of 4) */}
-  <div className="ml-4 flex flex-col justify-center h-[150px] leading-none">
-    <h2 className="text-[50px] font-extrabold text-[#EEAA45]">Daring</h2>
-    <h2 className="text-[50px] font-extrabold text-[#EEAA45]">Steps.</h2>
-
-    {/* Subtext below */}
-    <p className="text-black text-sm leading-relaxed mt-2">
-      Reboot Your Brand in{" "}
-      <span className="text-[#EEAA45] font-semibold">4 Daring Steps.</span>
-    </p>
-  </div>
+      {/* Section 5 - Design Process */}
+      <section className="w-screen h-screen flex flex-col lg:flex-row overflow-hidden">
+        
+        {/* Left: Image side with overlay and text */}
+        <div className="relative w-full lg:w-[470px] h-[50vh] lg:h-full translate-x-[156px]">
+          <Image
+            src="/images/laptop-table.png"
+            alt="Design Process"
+            fill
+            className="object-cover object-center"
+            priority
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-60" />
+ {/* full-width thin orange line */}
+{/* starts 25% from left, extends to right edge */}
+<div className="relative">
+  <div className="absolute left-1/4 right-0 h-[3px] bg-[#EEAA45] translate-y-[350px] translate-x-[-80px] w-[1160px]" aria-hidden="true" />
 </div>
+          {/* Text inside image */}
+          <div className="absolute inset-0 flex flex-col justify-center px-10 text-white translate-y-[100px]">
+            <div className="max-w-md">
+             
+              <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Connect & Collaborate</h3>
+              <p className="text-sm text-gray-200 mb-8">
+                We begin by immersing ourselves in your brand&apos;s universe. Our international client base feeds on trust, partnerships, and solid referrals.
+              </p>
+              <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Make It Happen</h3>
+              <p className="text-sm text-gray-200">
+                Concepts are only as good as their implementation. Our teams execute with precision and creativity to deliver impactful results.
+              </p>
+            </div>
+          </div>
+        </div>
 
-          
-          <div className="w-1/2 relative h-screen flex items-center justify-start translate-x-[-148px] translate-y-[40px]">
-  <div className="relative w-[470px] h-screen -mt-20 z-20">
-  <Image
-    src="/images/laptop-table.png"
-    alt="Design Process"
-    fill
-    priority
-    style={{ objectFit: "cover" }}
-    className="transition-all duration-300"
-  />
-
-
-    </div>
-</div>
-
-          <div className="translate-x-[-480px]">
-                
-    {/* Orange line */}
-    <div className="absolute h-[2px] bg-[#EEAA45] w-[1000px] left-[0px] top-[60px]" />
-            <div className="translate-y-[80px]">
-            <h2 className="text-3xl font-extrabold text-[#EEAA45] mb-1">
-            Connect & <br></br>
-            Collaborate
-            </h2>
-            <p className="text-white max-w-lg  text-[12px] leading-relaxed" style={{ width: "400px" }}>
-            We begin by immersing ourselves in your brand&apos;s <br></br>
-universe. Our international client base feeds on trust, <br></br>
-enduring partnerships, and solid referrals. Let&apos;s get <br></br>
-acquainted, set vision, and lay the groundwork for <br></br>
-something amazing.
+        {/* Right: Text side */}
+        
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[300px] translate-y-[-250px]">
+          <div className="mb-10">
+            <h2 className="text-[220px] font-extrabold text-[#EEAA45] leading-tight translate-x-[-160px] translate-y-[230px]">4</h2>
+            <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold text-[#EEAA45] leading-tight">Daring<br />Steps.</h2>
+            <p className="text-xl text-gray-700 mt-2">
+              Reboot Your Brand in <span className="text-[#EEAA45] font-semibold">4 Daring Steps.</span>
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl translate-y-[50px] translate-x-[-100px]">
+            <div>
+              <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Define Your Vision</h3>
+              <p className="text-sm text-gray-600">
+                Brilliant campaigns begin with clear objectives. We reveal your brand’s purpose and build a roadmap that connects strategy to results.
+              </p>
             </div>
-
-
-
-            <div className="translate-y-[120px]">
-            <h2 className="text-3xl font-extrabold text-[#EEAA45] mb-1">
-            Make It <br></br>
-Happen
-            </h2>
-            <p className="text-white  text-[12px] leading-relaxed"
-            style={{ width: "400px" }}>
-Concepts are only as good as their implementation. Our<br></br>
-service and marketing teams work diligently,<br></br>
-collaborating with you and the world&apos;s best media to<br></br>
-execute on every commitment with accuracy and<br></br>
-panache.
-            </p>
+            <div className="translate-x-[50px]">
+              <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Develop a Winning Strategy</h3>
+              <p className="text-sm text-gray-600">
+                Our specialists craft distinctive, results-driven strategies tailored to your brand and audience.
+              </p>
             </div>
-
-
-            </div>
-
-
-            <div className="translate-x-[-500px]">
-            <div className="translate-y-[-15px]">
-            <h2 className="text-3xl font-extrabold text-[#EEAA45] mb-1">
-            Define <br></br>
-Your Vision
-            </h2>
-            <p className="text-black max-w-lg  text-[12px] leading-relaxed" style={{ width: "400px" }}>
-            Brilliant campaigns begin with crystal-clear<br></br>
-objectives. We reveal your brand&apos;s purpose and<br></br>
-develop targets that dont merely reach for the stars—<br></br>
-they hit the mark, powering a strategy that inspires<br></br>
-and resonates.
-            </p>
-            </div>
-
-
-
-            
-
-
-            </div>
-
-
-            <div className="translate-x-[-550px]">
-            <div className="translate-y-[-25px]">
-            <h2 className="text-3xl font-extrabold text-[#EEAA45] mb-1">
-            Develop a <br></br>
-Winning Strategy
-            </h2>
-            <p className="text-black max-w-lg  text-[12px] leading-relaxed" style={{ width: "400px" }}>
-            Our digital specialists dont merely plan; they<br></br>
-create. We develop a vibrant, results-driven media<br></br>
-strategy that&apos;s as distinctive as your brand, aimed<br></br>
-at captivating and converting on your budget.
-            </p>
-            </div>
-            
-            </div>
-            
-        </section>
+          </div>
+        </div>
+      </section>
 
 {/* Section 6 - Portfolio */}
 <section data-horizontal-section
@@ -1701,7 +1769,7 @@ at captivating and converting on your budget.
           height: spacerHeight ? `${spacerHeight}px` : "1600vh",
         }}
       />
-    </>
+    </div>
   );
 };
 

@@ -5,6 +5,19 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export const runtime = "nodejs";
 const TABLE = "clients";
 
+function parseMaybeArrayField(val: any) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === "string" && val.trim() !== "") {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // not JSON — fallthrough
+    }
+  }
+  return [];
+}
+
 function normalizeRow(row: Record<string, any>) {
   return {
     id: row.id,
@@ -16,7 +29,8 @@ function normalizeRow(row: Record<string, any>) {
     blog_feature_image: row.blog_feature_image ?? row.blogFeatureImage ?? row.blog_feature_image_url ?? null,
     cta_text: row.cta_text ?? row.ctaText ?? "Read full blog",
     created_at: row.created_at ?? row.createdAt ?? null,
-    images: Array.isArray(row.images) ? row.images : (row.images ? JSON.parse(row.images) : []),
+    images: parseMaybeArrayField(row.images),
+    videos: parseMaybeArrayField(row.videos), // <- NEW: safe parsing of videos field
     body_data: row.body_data ?? row.bodyData ?? null,
     raw: row,
   };
@@ -69,6 +83,7 @@ export async function POST(req: Request) {
       blog_body_html: payload.blog_body_html ?? payload.blogBodyHtml ?? null,
       blog_feature_image: payload.blog_feature_image ?? payload.blogFeatureImage ?? null,
       images: Array.isArray(payload.images) ? payload.images : ([] as string[]),
+      videos: Array.isArray(payload.videos) ? payload.videos : ([] as string[]), // <- NEW: accept videos array
       body_data: payload.body_data ?? payload.bodyData ?? null,
       created_at: new Date().toISOString(),
     };

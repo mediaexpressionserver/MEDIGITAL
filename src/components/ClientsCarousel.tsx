@@ -1,4 +1,3 @@
-// src/components/ClientsCarousel.tsx
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -195,10 +194,10 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
 
             <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{active.title}</h3>
 
-            <div
-              className="text-sm text-gray-700 mb-4 prose max-w-none"
-              dangerouslySetInnerHTML={{ __html: active.body }}
-            />
+            {/* Scrollable content area with fixed max height */}
+            <div className="overflow-auto max-h-[48vh] text-sm text-gray-700 mb-4 prose max-w-none">
+              <div dangerouslySetInnerHTML={{ __html: active.body }} />
+            </div>
 
             <div className="flex justify-center gap-3">
               {active.blogSlug ? (

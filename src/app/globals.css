@@ -48,3 +48,22 @@ img {
 .hero-section > .absolute.bg-black\/60 {
   display: none !important;
 }
+
+/* help browser compositing — add to component or global css */
+.horizontal-container,
+.your-horizontal-container {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* e.g. global or module CSS */
+.force-repaint {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
