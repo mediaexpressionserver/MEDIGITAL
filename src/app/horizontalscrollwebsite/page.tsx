@@ -1488,11 +1488,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
             priority
           />
           <div className="absolute inset-0 bg-black bg-opacity-60" />
- {/* full-width thin orange line */}
-{/* starts 25% from left, extends to right edge */}
-<div className="relative">
-  <div className="absolute left-1/4 right-0 h-[3px] bg-[#EEAA45] translate-y-[350px] translate-x-[-80px] w-[1160px]" aria-hidden="true" />
-</div>
+
           {/* Text inside image */}
           <div className="absolute inset-0 flex flex-col justify-center px-10 text-white translate-y-[100px]">
             <div className="max-w-md">
