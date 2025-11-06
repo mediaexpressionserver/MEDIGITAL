@@ -62,7 +62,7 @@ useForceRepaintOnNav(containerRef);
   // REPLACE current handleNavClick with this improved version (keeps your mapping logic)
   const handleNavClick = (e: React.MouseEvent, href: string) => {
     // allow /blog (or other full routes) to behave normally
-    if (href === "/blog") return;
+    if (href === "/blog2") return;
 
     // only handle hash anchors here
     if (!href.startsWith("#")) {
@@ -1189,16 +1189,16 @@ return (
     { label: "ABOUT US", href: "#ourwaydesktop" },
     { label: "SERVICES", href: "#servicesdesktop" },
     { label: "PORTFOLIO", href: "#portfoliodesktop" },
-    { label: "BLOG", href: "/blog" },
+    { label: "BLOG", href: "/blog2" },
     { label: "REACH US", href: "#reachusdesktop" },
   ].map((item) => (
     <li
       key={item.href} // USE a stable unique key (href is unique here)
       className="text-gray-200 font-medium text-[9px] hover:text-[#EEAA45] transition-colors duration-300"
     >
-      {item.href === "/blog" ? (
+      {item.href === "/blog2" ? (
         // New Link API — no legacyBehavior; pass className directly to Link
-        <Link href="/blog" className="inline-block transform -rotate-90 whitespace-nowrap cursor-pointer hover:text-[#EEAA45] transition-colors duration-300 px-1">
+        <Link href="/blog2" className="inline-block transform -rotate-90 whitespace-nowrap cursor-pointer hover:text-[#EEAA45] transition-colors duration-300 px-1">
           {item.label}
         </Link>
       ) : (

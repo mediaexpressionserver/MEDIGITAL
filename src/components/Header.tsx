@@ -12,7 +12,7 @@ const navItems: NavItem[] = [
   { label: "ABOUT US", href: "#ourwaydesktop" },
   { label: "SERVICES", href: "#servicesdesktop" },
   { label: "PORTFOLIO", href: "#portfoliodesktop" },
-  { label: "BLOG", href: "/blog" },
+  { label: "BLOG", href: "/blog2" },
   { label: "REACH US", href: "#reachusdesktop" },
 ];
 
@@ -31,6 +31,12 @@ const Header: React.FC = () => {
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [searchString, setSearchString] = useState<string>("");
+
+  // IMPORTANT: track mount to avoid SSR/CSR mismatch for active-link styling
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // anchor ids (from navItems that are hashes)
   const anchorIds = useMemo(
@@ -71,15 +77,19 @@ const Header: React.FC = () => {
         setMobileOpen(false);
       }
     };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("click", onClickOutside);
+    if (typeof window !== "undefined") {
+      window.addEventListener("keydown", onKey);
+      window.addEventListener("click", onClickOutside);
+    }
     return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("click", onClickOutside);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("keydown", onKey);
+        window.removeEventListener("click", onClickOutside);
+      }
     };
   }, [mobileOpen]);
 
-  // scroll-spy: observe anchor sections on the homepage
+  // scroll-spy: observe anchor sections on the homepage (client-only)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -153,30 +163,34 @@ const Header: React.FC = () => {
         // ignore
       }
     };
-    window.addEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
-    return () => window.removeEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
+    if (typeof window !== "undefined") {
+      window.addEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
+      }
+    };
   }, []);
 
-  // hide header on certain routes / search / hash substrings (existing rule)
+  // hide header on certain routes / search substrings (server-safe)
   const hideSubstrings = ["horizontalscroll", "horizontal-scroll", "horizontal"];
   const pathnameLower = (pathname || "").toLowerCase();
   const searchStringLower = (searchString || "").toLowerCase();
-  const hash = typeof window !== "undefined" ? window.location.hash.toLowerCase() : "";
   const queryParams = typeof window !== "undefined" ? new URLSearchParams(searchString) : new URLSearchParams();
   const hideHeaderFlag = queryParams.get("hideHeader");
   const shouldHideHeader =
     hideSubstrings.some((s) => pathnameLower.includes(s)) ||
     hideSubstrings.some((s) => searchStringLower.includes(s)) ||
-    hideSubstrings.some((s) => hash.includes(s)) ||
     hideHeaderFlag === "1" ||
     hideHeaderFlag === "true";
 
+  // NOTE: we intentionally do NOT read window.location.hash during render because that causes SSR/CSR mismatch.
   if (shouldHideHeader) {
     if (process.env.NODE_ENV === "development") {
-      console.debug("[Header] hidden because route/search/hash matched hide rules:", {
+      console.debug("[Header] hidden because route/search matched hide rules:", {
         pathname,
         search: searchString,
-        hash,
       });
     }
     return null;
@@ -280,10 +294,13 @@ const Header: React.FC = () => {
         <nav role="navigation" aria-label="Primary navigation" className="hidden md:block">
           <ul className="flex items-center space-x-6">
             {navItems.map((item) => {
-              const active = item.href.startsWith("/")
-                ? isRouteActive(item.href)
-                : item.href.startsWith("#")
-                ? activeHash === item.href
+              // only compute "active" after client mount to prevent SSR/CSR mismatch
+              const active = isClient
+                ? item.href.startsWith("/")
+                  ? isRouteActive(item.href)
+                  : item.href.startsWith("#")
+                  ? activeHash === item.href
+                  : false
                 : false;
 
               const baseClass = "text-sm font-medium tracking-wide transition-colors";
@@ -315,21 +332,9 @@ const Header: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-3">
-          <button
-            className="hidden md:inline-flex bg-[#E29A4D] hover:bg-[#ffae54] text-black font-semibold text-xs px-4 py-2 rounded-md transition-all duration-300"
-            onClick={() => {
-              if (pathname === "/") {
-                smoothScrollTo("#reachusdesktop");
-              } else {
-                router.push("/#reachusdesktop");
-                setTimeout(() => smoothScrollTo("#reachusdesktop"), SCROLL_DELAY_AFTER_NAV_MS);
-              }
-            }}
-            aria-label="Contact us"
-          >
-            Contact Us
-          </button>
-
+          {/* Desktop Contact button - use the same anchor->route mapping as header so we navigate to the correct page first */}
+          
+          {/* Mobile toggle button (unchanged behaviour) */}
           <button
             ref={toggleButtonRef}
             className="inline-flex items-center justify-center p-2 rounded-md md:hidden text-gray-200 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400"
@@ -359,10 +364,12 @@ const Header: React.FC = () => {
         <div className="px-4 py-4 space-y-3">
           <nav aria-label="Mobile primary" className="space-y-1">
             {navItems.map((item) => {
-              const active = item.href.startsWith("/")
-                ? isRouteActive(item.href)
-                : item.href.startsWith("#")
-                ? activeHash === item.href
+              const active = isClient
+                ? item.href.startsWith("/")
+                  ? isRouteActive(item.href)
+                  : item.href.startsWith("#")
+                  ? activeHash === item.href
+                  : false
                 : false;
 
               const baseClass = "block px-3 py-2 rounded text-base font-medium transition-colors";
@@ -390,22 +397,7 @@ const Header: React.FC = () => {
             })}
           </nav>
 
-          <div className="pt-2">
-            <button
-              className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-[#E29A4D] text-black font-semibold rounded-md hover:bg-[#ffae54] transition"
-              onClick={() => {
-                setMobileOpen(false);
-                if (pathname === "/") {
-                  smoothScrollTo("#reachusdesktop");
-                } else {
-                  router.push("/#reachusdesktop");
-                  setTimeout(() => smoothScrollTo("#reachusdesktop"), SCROLL_DELAY_AFTER_NAV_MS);
-                }
-              }}
-            >
-              Contact Us
-            </button>
-          </div>
+          
         </div>
       </div>
     </header>

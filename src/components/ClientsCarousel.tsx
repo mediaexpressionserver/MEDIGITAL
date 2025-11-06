@@ -29,7 +29,7 @@ function normalize(item: ApiClient) {
       item.logo ??
       "",
     blogSlug: item.blogSlug ?? item.blog_slug ?? item.slug ?? "",
-    ctaText: item.cta_text ?? item.ctaText ?? "Read full blog",
+    ctaText: item.cta_text ?? item.ctaText ?? "Read full case study",
   };
 }
 
@@ -206,7 +206,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
                   onClick={closeModal}
                   className="inline-block bg-orange-500 text-white px-4 py-2 rounded text-sm"
                 >
-                  {active.ctaText || "Read full blog"}
+                  {active.ctaText || "Read full case study"}
                 </Link>
               ) : (
                 <span className="text-sm text-gray-500">No blog linked</span>

@@ -11,7 +11,6 @@ export type ClientRow = Record<string, any>;
  *  - a JSON stringified array
  *  - a comma-separated string
  *  - an object with a `urls`/`items`/`files` array
- *  - or other nested structures
  *
  * Returns a cleaned string[].
  */
@@ -59,7 +58,6 @@ function parseMediaField(raw: any): string[] {
     }
   } catch (e) {
     // ignore and return empty below
-    // console.warn('parseMediaField error', e);
   }
   return [];
 }
@@ -76,10 +74,14 @@ function normalizeRow(row: Record<string, any>) {
   const images = parseImagesField(row.images ?? row.image_urls ?? row.imageUrls ?? row.images_json ?? row.image ?? null);
   const videos = parseVideosField(row.videos ?? row.video_urls ?? row.videoUrls ?? row.videos_json ?? row.video ?? null);
 
+  // blog2-specific media parsing
+  const blog2Images = parseImagesField(row.blog2_images ?? row.blog2_images_json ?? row.blog2Images ?? null);
+  const blog2Videos = parseVideosField(row.blog2_videos ?? row.blog2_videos_json ?? row.blog2Videos ?? null);
+
   // choose sensible feature image: explicit feature field -> first image -> null
   const blogFeatureFromRow =
-    row.blog_feature_image_url ??
     row.blog_feature_image ??
+    row.blog_feature_image_url ??
     row.blogFeatureImageUrl ??
     row.blogFeatureImage ??
     row.feature_image ??
@@ -88,18 +90,36 @@ function normalizeRow(row: Record<string, any>) {
 
   const blogFeatureImageUrl = blogFeatureFromRow ?? (images.length > 0 ? images[0] : null);
 
+  const blog2FeatureFromRow =
+    row.blog2_feature_image ??
+    row.blog2_feature_image_url ??
+    row.blog2FeatureImageUrl ??
+    row.blog2FeatureImage ??
+    null;
+
+  const blog2FeatureImageUrl = blog2FeatureFromRow ?? (blog2Images.length > 0 ? blog2Images[0] : null);
+
   return {
     id: String(row.id ?? row.client_name ?? Math.random()),
     clientName: row.client_name ?? row.clientName ?? row.name ?? "",
     logoUrl: row.logo_url ?? row.logoUrl ?? row.logo ?? "",
+    // blog1 fields (existing)
     blogTitle: row.blog_title ?? row.blogTitle ?? row.title ?? "",
     blogSlug: row.blog_slug ?? row.blogSlug ?? row.slug ?? "",
     blogBodyHtml: row.blog_body_html ?? row.blogBodyHtml ?? row.body ?? "",
-    blogFeatureImageUrl,
+    blogFeatureImageUrl: blogFeatureImageUrl,
+    // blog2 fields (new)
+    blog2Title: row.blog2_title ?? row.blog2Title ?? null,
+    blog2Slug: row.blog2_slug ?? row.blog2Slug ?? null,
+    blog2BodyHtml: row.blog2_body_html ?? row.blog2BodyHtml ?? null,
+    blog2FeatureImageUrl: blog2FeatureImageUrl,
+    // arrays
     ctaText: row.cta_text ?? row.ctaText ?? "Read full blog",
     createdAt: row.created_at ?? row.createdAt ?? null,
     images,
     videos,
+    blog2Images,
+    blog2Videos,
     bodyData: row.body_data ?? row.bodyData ?? null,
     raw: row,
   };
