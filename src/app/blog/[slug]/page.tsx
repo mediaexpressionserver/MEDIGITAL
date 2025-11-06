@@ -1,23 +1,12 @@
-<<<<<<< HEAD
 // src/app/blog/[slug]/page.tsx
-// Server component — optimized for smooth scrolling and fast paint
-=======
-// src/app/blog2/[slug]/page.tsx
 // Server component — optimized for smooth scrolling and rendering
->>>>>>> 548e073 (Fix header scroll behavior and update navigation)
 
 import Image from "next/image";
 import Header from "@/components/Header";
 import { readClientsData } from "@/lib/data";
-<<<<<<< HEAD
-import BackButtonClient from "./BackButtonClient";
-import MediaGallery from "@/components/MediaGallery";
-import ScrollAfterBack from "./ScrollAfterBack"; // client-only scroll handler
-=======
 import BackButtonClient from "./BackButtonClient"; // if present
 import MediaGallery from "@/components/MediaGallery";
 import ScrollAfterBack from "./ScrollAfterBack"; // client component for scroll behavior
->>>>>>> 548e073 (Fix header scroll behavior and update navigation)
 
 export const metadata = {
   title: "Blog2",
@@ -67,10 +56,7 @@ export default async function Blog2DetailPage({
     client.blogFeatureImageUrl ??
     (images && images.length > 0 ? images[0] : null);
 
-<<<<<<< HEAD
-=======
   // normalize videos
->>>>>>> 548e073 (Fix header scroll behavior and update navigation)
   const videosRaw =
     client.videos ?? client.video_urls ?? client.videoUrls ?? client.videos_list ?? [];
   const videos: string[] = Array.isArray(videosRaw)
@@ -84,11 +70,7 @@ export default async function Blog2DetailPage({
 
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden">
-<<<<<<< HEAD
-      {/* Optimized background using Next Image (GPU-friendly) */}
-=======
       {/* Optimized background */}
->>>>>>> 548e073 (Fix header scroll behavior and update navigation)
       <div className="absolute inset-0 -z-10">
         <Image
           src="/images/Blogpagebg.png"
@@ -142,17 +124,10 @@ export default async function Blog2DetailPage({
             {client.blog_slug && (
               <div className="mt-6">
                 <a
-<<<<<<< HEAD
                   href={`/blog/${client.blog_slug}`}
                   className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition"
                 >
-                  Read full blog
-=======
-                  href={`/blog2/${client.blog_slug}`}
-                  className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition"
-                >
                   Read full case study
->>>>>>> 548e073 (Fix header scroll behavior and update navigation)
                 </a>
               </div>
             )}

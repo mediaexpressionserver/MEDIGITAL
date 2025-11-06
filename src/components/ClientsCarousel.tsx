@@ -130,12 +130,12 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
               <button
                 key={it.id}
                 onClick={() => openModal(it)}
-                className="w-36 h-20 flex-shrink-0 flex items-center justify-center bg-white rounded focus:outline-none"
+                className="w-28 sm:w-36 md:w-44 flex-shrink-0 flex items-center justify-center bg-white rounded focus:outline-none"
                 aria-label={it.title}
                 title={it.title}
               >
                 {it.logo ? (
-                  <div className="relative w-full h-full p-2">
+                  <div className="relative w-full h-14 sm:h-20 md:h-24 p-2">
                     <Image
                       src={it.logo}
                       alt={`${it.title} logo`}
@@ -178,18 +178,16 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
               ✕
             </button>
 
-            <div className="flex justify-center mb-4">
-              <div className="relative w-40 h-20">
-                {active.logo ? (
-                  <Image
-                    src={active.logo}
-                    alt={`${active.title} logo`}
-                    fill
-                    style={{ objectFit: "contain" }}
-                    unoptimized
-                  />
-                ) : null}
-              </div>
+            <div className="relative w-32 sm:w-40 md:w-48 h-16 sm:h-20 md:h-24">
+              {active.logo ? (
+                <Image
+                  src={active.logo}
+                  alt={`${active.title} logo`}
+                  fill
+                  style={{ objectFit: "contain" }}
+                  unoptimized
+                />
+              ) : null}
             </div>
 
             <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{active.title}</h3>
