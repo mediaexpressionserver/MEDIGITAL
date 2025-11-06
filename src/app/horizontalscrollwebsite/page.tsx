@@ -32,6 +32,7 @@ export default function HorizontalScrollWebsite() {
   const [viewportWidth, setViewportWidth] = useState<number>(0);
   const [viewportHeight, setViewportHeight] = useState<number>(0);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [showFullText, setShowFullText] = useState(false);
 
   useForceRepaintOnNav(containerRef);
 
@@ -220,6 +221,96 @@ export default function HorizontalScrollWebsite() {
     }
   }
 
+  // Apply the same transform logic immediately (used when returning via back/nav to ensure correct position)
+  function applyScrollTransforms() {
+    if (!containerRef.current || !viewportWidth || !viewportHeight) return;
+    const y = window.scrollY || window.pageYOffset;
+
+    const horizontalScrollDistance = (viewportWidth * 3) - viewportWidth;
+    const bufferZone = viewportHeight * 0.8;
+    const transitionZone = viewportHeight * 1.2;
+
+    const horizontalEnd = horizontalScrollDistance;
+    const bufferEnd = horizontalEnd + bufferZone;
+    const transitionEnd = bufferEnd + transitionZone;
+
+    // Phase mapping (same logic as onScroll)
+    if (y <= horizontalEnd) {
+      const x = horizontalEnd === 0 ? 0 : (y / horizontalEnd) * horizontalScrollDistance;
+
+      containerRef.current.style.transform = `translateX(-${x}px)`;
+      containerRef.current.style.position = "fixed";
+      containerRef.current.style.top = "0px";
+      containerRef.current.style.zIndex = "30";
+      containerRef.current.style.opacity = "1";
+
+      if (verticalSectionsRef.current) {
+        verticalSectionsRef.current.style.opacity = "0";
+        verticalSectionsRef.current.style.pointerEvents = "none";
+        verticalSectionsRef.current.style.transform = "translateY(100vh)";
+        verticalSectionsRef.current.style.position = "fixed";
+        verticalSectionsRef.current.style.zIndex = "10";
+      }
+
+      return;
+    }
+
+    if (y > horizontalEnd && y <= bufferEnd) {
+      containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px)`;
+      containerRef.current.style.position = "fixed";
+      containerRef.current.style.top = "0px";
+      containerRef.current.style.zIndex = "30";
+      containerRef.current.style.opacity = "1";
+
+      if (verticalSectionsRef.current) {
+        verticalSectionsRef.current.style.opacity = "0";
+        verticalSectionsRef.current.style.pointerEvents = "none";
+        verticalSectionsRef.current.style.transform = "translateY(100vh)";
+        verticalSectionsRef.current.style.position = "fixed";
+        verticalSectionsRef.current.style.zIndex = "10";
+      }
+
+      return;
+    }
+
+    if (y > bufferEnd && y <= transitionEnd) {
+      const transitionProgress = (y - bufferEnd) / transitionZone;
+      const slideUpDistance = transitionProgress * viewportHeight;
+
+      containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${slideUpDistance}px)`;
+      containerRef.current.style.position = "fixed";
+      containerRef.current.style.top = "0px";
+      containerRef.current.style.zIndex = "20";
+      containerRef.current.style.opacity = `${1 - transitionProgress * 0.8}`;
+
+      if (verticalSectionsRef.current) {
+        const slideInDistance = viewportHeight * (1 - transitionProgress);
+        verticalSectionsRef.current.style.opacity = `${transitionProgress}`;
+        verticalSectionsRef.current.style.pointerEvents = transitionProgress > 0.5 ? "auto" : "none";
+        verticalSectionsRef.current.style.transform = `translateY(${slideInDistance}px)`;
+        verticalSectionsRef.current.style.position = "fixed";
+        verticalSectionsRef.current.style.zIndex = "25";
+      }
+
+      return;
+    }
+
+    // final vertical state
+    const verticalScroll = y - transitionEnd;
+    containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${viewportHeight * 2}px)`;
+    containerRef.current.style.position = "fixed";
+    containerRef.current.style.zIndex = "10";
+    containerRef.current.style.opacity = "0";
+
+    if (verticalSectionsRef.current) {
+      verticalSectionsRef.current.style.opacity = "1";
+      verticalSectionsRef.current.style.pointerEvents = "auto";
+      verticalSectionsRef.current.style.transform = `translateY(-${verticalScroll}px)`;
+      verticalSectionsRef.current.style.position = "fixed";
+      verticalSectionsRef.current.style.zIndex = "30";
+    }
+  }
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -227,17 +318,58 @@ export default function HorizontalScrollWebsite() {
     // Run on first mount (next paint)
     requestAnimationFrame(() => forceRepaint(el));
 
-    // Handler that calls repaint on navigation events
-    const onVisible = () => forceRepaint(el);
+    // Handler that calls repaint on navigation events and re-runs scroll logic
+    const onVisible = () => {
+      try {
+        forceRepaint(el);
+      } catch (err) {
+        // ignore
+      }
+
+      // ensure layout reads are applied
+      setTimeout(() => {
+        try {
+          // apply transforms immediately (handles back/forward and bfcache restores)
+          applyScrollTransforms();
+        } catch (err) {
+          // ignore
+        }
+
+        // Fire a synthetic scroll event so the onScroll handler recomputes transforms
+        try {
+          window.dispatchEvent(new Event("scroll"));
+        } catch (err) {
+          // ignore
+        }
+
+        // Tiny physical nudge — move 1px down then back up — forces some browsers to repaint and update transforms
+        try {
+          window.scrollBy(0, 1);
+          window.scrollBy(0, -1);
+        } catch (err) {
+          // ignore
+        }
+
+        // repeat a second time shortly after for stubborn browsers
+        setTimeout(() => {
+          try {
+            applyScrollTransforms();
+            window.dispatchEvent(new Event("scroll"));
+          } catch (err) {}
+        }, 80);
+      }, 40);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") onVisible();
+    };
 
     // pageshow fires on back/forward navigation (important)
     window.addEventListener("pageshow", onVisible);
     // popstate for some routers/browsers
     window.addEventListener("popstate", onVisible);
     // visibilitychange covers tab switching and some navigation scenarios
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") onVisible();
-    });
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     // optional: also handle resize (if layout depends on viewport)
     window.addEventListener("resize", onVisible);
@@ -245,34 +377,10 @@ export default function HorizontalScrollWebsite() {
     return () => {
       window.removeEventListener("pageshow", onVisible);
       window.removeEventListener("popstate", onVisible);
-      document.removeEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") onVisible();
-      });
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("resize", onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    // Delay until next paint so layout is complete
-    requestAnimationFrame(() => {
-      try {
-        // tiny scroll nudge forces a repaint
-        el.scrollBy({ left: 1, behavior: "instant" as any });
-        el.scrollBy({ left: -1, behavior: "instant" as any });
-      } catch {
-        // fallback: force style reflow
-        if (el) {
-          // force reflow read
-          void el.getBoundingClientRect();
-          // force GPU layer repaint
-          el.style.transform = "translateZ(0)";
-        }
-      }
-    });
   }, []);
 
   useEffect(() => {
@@ -438,36 +546,11 @@ export default function HorizontalScrollWebsite() {
   }, []);
 
   // Small Windows zoom-fix: gentle root font-size adjustment on some Windows laptops (conservative)
+    // Removed the experimental Windows root-font override because it caused inconsistent
+  // scaling across devices. Keep default font-size so responsive units behave consistently.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const adjustRootForWindows = () => {
-      try {
-        const ua = navigator.userAgent || "";
-        const isWindows = /Windows/i.test(ua);
-        if (!isWindows) {
-          // clear any previous override
-          if (document.documentElement.style.fontSize) document.documentElement.style.fontSize = "";
-          return;
-        }
-
-        const dpr = window.devicePixelRatio || 1;
-        // Heuristic: on some Windows devices with DPR === 1, the layout appears visually zoomed at 100%.
-        // Apply a tiny, safe reduction to root font-size so elements scale a little smaller and avoid the "zoomed" look.
-        // This is conservative — it uses 15px (instead of browser default ~16px) and only when DPR===1.
-        if (dpr === 1) {
-          document.documentElement.style.fontSize = "15px";
-        } else {
-          // restore default sizing for higher DPR
-          document.documentElement.style.fontSize = "";
-        }
-      } catch (err) {
-        // ignore
-      }
-    };
-
-    adjustRootForWindows();
-    window.addEventListener("resize", adjustRootForWindows);
-    return () => window.removeEventListener("resize", adjustRootForWindows);
+    // ensure any previous override is cleared on mount
+    try { document.documentElement.style.fontSize = ""; } catch {}
   }, []);
 
   // Resize / initial sizes (only for desktop)
@@ -722,7 +805,10 @@ export default function HorizontalScrollWebsite() {
               ref={menuRef}
             >
               {/* Logo inside menu */}
-              <div className="flex items-center justify-between px-6 pt-6 absolute top-0 left-0 right-0 z-30 translate-x-[80px]">
+              <div
+  className="flex items-center justify-between px-6 pt-6 absolute top-0 left-0 right-0 z-30"
+  style={{ transform: "translateX(clamp(0px, 4vw, 80px))" }}
+>
                 <Image
                   src="/images/Group1234.png"
                   alt="Logo"
@@ -733,7 +819,10 @@ export default function HorizontalScrollWebsite() {
               </div>
 
               {/* Menu Options */}
-              <div className="flex flex-col items-start p-6 translate-y-[120px]">
+              <div
+  className="flex flex-col items-start p-6"
+  style={{ transform: "translateY(clamp(24px, 8vh, 120px))" }}
+>
                 {/* Menu links with inline height */}
                 <a href="#home" className="text-lg font-semibold leading-[50px] landscape:leading-[50px]">
                   Home
@@ -758,26 +847,23 @@ export default function HorizontalScrollWebsite() {
               <AnimatedSmiley
                 src="/images/Smiley.png"
                 alt="Smiley"
-                className="
-                  max-h-[300px]
-                  max-w-[300px]
-                  landscape:w-[200px]
-                  landscape:h-[200px]
-                  translate-y-[-100px]
-                  landscape:translate-x-[-200px]
-                  landscape:translate-y-[100px]
-                "
+                className="max-h-[300px] max-w-[300px] landscape:w-[200px] landscape:h-[200px]"
+style={{
+  transform:
+    "translateX(clamp(-200px, -12vw, -100px)) translateY(clamp(-100px, -8vh, -24px))",
+}}
               />
             </div>
 
             {/* Updated Text */}
             <div
-              className="transform text-4xl font-extrabold text-white leading-snug translate-y-[80px] landscape:-translate-y-[80px] landscape:translate-x-[200px]"
+              className="transform text-4xl font-extrabold text-white leading-snug "
               style={{
                 textShadow: `
                   -2px 0 0 #D59A3F,
                   2px 0 0 #AF2648
                 `,
+                transform: "translateX(clamp(0px, 6vw, 200px)) translateY(clamp(-80px, 6vh, 80px))",
               }}
             >
               <span>
@@ -786,7 +872,7 @@ export default function HorizontalScrollWebsite() {
             </div>
 
             {/* Chevron Down */}
-            <div className="translate-y-[180px] landscape:translate-y-[-10px]">
+            <div style={{ transform: "translateY(clamp(-10px, 8vh, 180px))" }}>
               <ChevronDown className="w-10 h-10 text-white animate-bounce" />
             </div>
           </section>
@@ -952,19 +1038,65 @@ export default function HorizontalScrollWebsite() {
 
         {/* Section 2 - Ideas */}
         <section id="ourwaydesktop" data-horizontal-section className="w-screen h-screen flex relative">
-          <div className="flex-1 flex flex-col justify-center px-10 bg-white relative z-10 translate-x-[100px]">
-            <h2 className="text-7xl font-extrabold text-[#EEAA45] leading-tight">
-              Ideas That <br /> Break <br /> Through.
-            </h2>
-            <p className="mt-4 text-[18px] text-gray-600 max-w-[400px]">
-              We dont play it safe—we push ideas further. A team that tries,
-              learns, and reinvents until your brand{" "}
-              <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
-            </p>
-            <button className="mt-6 w-[200px] py-2 bg-[#EEAA45] text-white rounded-lg hover:bg-[#EEAA45]">
-              Read more
-            </button>
-          </div>
+<div
+  className="flex-1 flex flex-col justify-center px-10 bg-white relative z-10 max-h-[80vh]"
+  style={{ transform: "translateX(clamp(24px, 4vw, 100px)) translateY(100px)" }}
+>
+  {!showFullText && (
+    <h2 className="text-7xl font-extrabold text-[#EEAA45] leading-tight">
+      Ideas That <br /> Break <br /> Through.
+    </h2>
+  )}
+
+  <div className="mt-4 text-[18px] text-gray-600 w-full">
+    {!showFullText ? (
+      <>
+        <div className="max-h-[48vh] overflow-y-auto pr-4">
+          <p className="max-w-[400px]">
+            We dont play it safe—we push ideas further. A team that tries,
+            learns, and reinvents until your brand{" "}
+            <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
+          </p>
+        </div>
+
+        <div className="mt-6">
+          <button
+            onClick={() => setShowFullText(true)}
+            className="w-[200px] py-2 bg-[#EEAA45] text-white rounded-lg hover:bg-[#EEAA45]"
+          >
+            Read more
+          </button>
+        </div>
+      </>
+    ) : (
+      <>
+        <div className="max-h-[60vh] overflow-y-auto pr-4">
+          <p className="max-w-[700px] leading-relaxed">
+            Every idea begins as a spark — small, rough, and full of potential. What we do is nurture that spark into something memorable. We dive into insights, explore new angles, and shape concepts that feel alive. Our process is part intuition, part strategy, and entirely driven by passion.
+            <br />
+            <br />
+            We experiment fearlessly, polishing every thought until it reflects clarity and purpose. We rethink, rework, and reinvent until the message feels effortless. For us, creativity isn’t a moment — it’s a commitment.
+            <br />
+            <br />
+            We build ideas that connect emotionally, communicate intelligently, and stand confidently in a crowded world. Whether it’s a brand story, a campaign, or a single line of copy, we make sure it resonates. We’re here to craft work that feels distinctive, meaningful, and undeniably yours.
+            <br />
+            <br />
+            Because for us, “good enough” is never enough.
+          </p>
+        </div>
+
+        <div className="mt-4">
+          <button
+            onClick={() => setShowFullText(false)}
+            className="w-[200px] py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400"
+          >
+            Show less
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+</div>
 
           <div className="flex-1 relative overflow-hidden">
             <Image
@@ -983,10 +1115,13 @@ export default function HorizontalScrollWebsite() {
           data-horizontal-section
           id="servicesdesktop"
           className="w-screen h-screen flex flex-nowrap items-center px-12 bg-gray-200"
-          style={{ minWidth: "1200px" }} // keeps layout from collapsing on zoom-out (adjust as needed)
+          style={{minWidth: "min(1200px, 92vw)" }} // keeps layout from collapsing on zoom-out (adjust as needed)
         >
           {/* Left column: service pills (kept constrained) */}
-          <div className="flex-shrink-0 w-[420px] p-6 translate-x-[800px]">
+          <div
+  className="flex-shrink-0 w-[420px] p-6"
+  style={{ transform: "translateX(clamp(820px, 18vw, 1500px))" }}
+>
             <div className="max-w-[400px] mx-auto">
               <ServicePillList
                 items={services}
@@ -998,7 +1133,7 @@ export default function HorizontalScrollWebsite() {
           </div>
 
           {/* Right column: text — use padding instead of translate to shift */}
-          <div className="flex-1 min-w-0 translate-x-[-300px]">
+          <div className="flex-1 min-w-0 md:translate-x-[-30%] lg:translate-x-[-35%]">
             <div className="max-w-2xl pl-6">
               <h2 className="text-5xl lg:text-7xl font-extrabold text-black mb-4 leading-tight">
                 Need a <br />digital<br />marketing<br />partner?
@@ -1158,7 +1293,10 @@ export default function HorizontalScrollWebsite() {
         {/* Section 5 - Design Process */}
         <section className="w-screen h-screen flex flex-col lg:flex-row overflow-hidden">
           {/* Left: Image side with overlay and text */}
-          <div className="relative w-full lg:w-[470px] h-[50vh] lg:h-full translate-x-[156px]">
+          <div
+  className="relative w-full lg:w-[470px] h-[50vh] lg:h-full"
+  style={{ transform: "translateX(clamp(32px, 6vw, 156px))" }}
+>
             <Image
               src="/images/laptop-table.png"
               alt="Design Process"
@@ -1184,16 +1322,30 @@ export default function HorizontalScrollWebsite() {
           </div>
 
           {/* Right: Text side */}
-          <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[300px] translate-y-[-250px]">
+          <div
+  className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10"
+  style={{
+    transform:
+      "translateX(clamp(120px, 14vw, 340px)) translateY(clamp(-420px, -22vh, -250px))",
+  }}
+>
             <div className="mb-10">
-              <h2 className="text-[220px] font-extrabold text-[#EEAA45] leading-tight translate-x-[-160px] translate-y-[230px]">4</h2>
+              <h2
+  className="text-[220px] font-extrabold text-[#EEAA45] leading-tight"
+  style={{ transform: "translateX(clamp(-290px, -11vw, -150px)) translateY(clamp(230px, 23vh, 380px))" }}
+>
+  4
+</h2>
               <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold text-[#EEAA45] leading-tight">Daring<br />Steps.</h2>
               <p className="text-xl text-gray-700 mt-2">
                 Reboot Your Brand in <span className="text-[#EEAA45] font-semibold">4 Daring Steps.</span>
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl translate-y-[50px] translate-x-[-100px]">
+            <div
+  className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl"
+  style={{ transform: "translateX(clamp(-100px, -6vw, -24px)) translateY(clamp(18px, 6vh, 50px))" }}
+>
               <div>
                 <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Define Your Vision</h3>
                 <p className="text-sm text-gray-600">
@@ -1216,7 +1368,10 @@ export default function HorizontalScrollWebsite() {
           className="w-screen h-screen relative flex items-center justify-between bg-gray-300 overflow-visible translate-x-0"
         >
           {/* Left side - Rectangle image */}
-          <div className="w-1/2 relative h-screen flex items-center justify-start translate-x-[156px]">
+          <div
+  className="w-1/2 relative h-screen flex items-center justify-start"
+  style={{ transform: "translateX(clamp(24px, 6vw, 156px))" }}
+>
             <div className="w-[470px] h-screen relative">
               <Image
                 src="/images/working-table-with-computer 1.png"
@@ -1229,7 +1384,10 @@ export default function HorizontalScrollWebsite() {
             </div>
           </div>
 
-          <div className="absolute inset-0 rounded-lg flex flex-col justify-center items-start p-8 translate-y-[-150px] translate-x-[150px] z-20 pointer-events-none">
+          <div
+  className="absolute inset-0 rounded-lg flex flex-col justify-center items-start p-8 z-20 pointer-events-none"
+  style={{ transform: "translateX(clamp(24px, 6vw, 150px)) translateY(clamp(-300px, -8vh, -190px))" }}
+>
             <h2 className="text-5xl font-bold text-[#EEAA45] mb-4 pointer-events-auto">
               Our<br />Portfolio
             </h2>
@@ -1298,7 +1456,10 @@ export default function HorizontalScrollWebsite() {
         {/* Section 7 - Contact Form */}
         <section  id="reachusdesktop" className="w-screen h-screen relative flex items-center justify-between bg-white px-10" >
           {/* Left side - Rectangle image with content */}
-          <div className="w-1/2 relative h-full flex items-center justify-start translate-x-[116px]">
+          <div
+  className="w-1/2 relative h-full flex items-center justify-start"
+  style={{ transform: "translateX(calc(clamp(9px, 3.9vw, 105px) - 10px))", willChange: "transform" }}
+>
             <div className="w-[470px] h-screen relative">
               <Image
                 src="/images/black-wired-phone-black-background 1.png"
@@ -1395,12 +1556,13 @@ export default function HorizontalScrollWebsite() {
                 alt="Logo"
                 width={300}
                 height={80}
-                className="cursor-pointer translate-x-[0px] translate-y-[-50px]"
+                className="cursor-pointer"
+  style={{ transform: "translateY(clamp(-50px, -6vh, -18px))" }}
               />
           </div>
 
           {/* Bottom logos */}
-          <div className="flex items-center justify-center space-x-8 translate-y-[70px] translate-x-[-30px]">
+          <div className="flex items-center justify-center space-x-8" style={{ transform: "translateX(clamp(-30px, -4vw, -6px)) translateY(clamp(18px, 8vh, 70px))" }}>
             {[
               { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
               { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },

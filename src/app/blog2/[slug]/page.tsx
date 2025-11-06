@@ -7,6 +7,9 @@ import { readClientsData } from "@/lib/data";
 import MediaGalleryClient from "@/components/MediaGallery"; // client wrapper (ssr:false inside)
 import Image from "next/image";
 
+// Import the client wrapper that handles the sessionStorage flag and history.back()
+import BackButtonClient from "./BackButtonClient";
+
 export const metadata = {
   title: "Blog2",
 };
@@ -89,16 +92,32 @@ export default async function Blog2DetailPage({
 
   const merged = Array.from(byId.values());
 
+  // robust slug matching: decode incoming slug, normalize to lower-case & trim,
+  // and compare against multiple candidate fields (snake_case/camelCase/raw). Also fall back to id match.
+  const decodedSlug = decodeURIComponent(String(slug || "").trim()).toLowerCase();
+
+  const normalize = (s: any) => String(s ?? "").toLowerCase().trim();
+
   const client = merged.find((c) => {
+    // collect possible slug values from normalized object and raw payload
     const candidateSlugs = [
-      String(c.blog2_slug ?? c.blog2Slug ?? ""),
-      String(c.blog_slug ?? c.blogSlug ?? ""),
-      String(c._raw?.blog2_slug ?? c._raw?.blog2Slug ?? ""),
-      String(c._raw?.blog_slug ?? c._raw?.blogSlug ?? ""),
+      c.blog2_slug,
+      c.blog2Slug,
+      c.blog_slug,
+      c.blogSlug,
+      c._raw?.blog2_slug,
+      c._raw?.blog2Slug,
+      c._raw?.blog_slug,
+      c._raw?.blogSlug,
+      c.slug,
+      c._raw?.slug,
+      c.id,
+      c._raw?._id,
     ]
-      .map((s) => (s || "").toString().trim())
+      .map((x) => normalize(x))
       .filter(Boolean);
-    return candidateSlugs.includes(slug);
+
+    return candidateSlugs.includes(decodedSlug) || normalize(c.id) === decodedSlug;
   });
 
   if (!client) {
@@ -196,6 +215,9 @@ export default async function Blog2DetailPage({
     <main className="relative min-h-screen w-full bg-fixed" style={bgStyle}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative z-10 max-w-screen-xl mx-auto px-6 py-16">
+        {/* Back button client (client component) */}
+        <BackButtonClient />
+
         <Header />
 
         <article className="bg-white rounded-lg shadow overflow-hidden">
@@ -220,8 +242,6 @@ export default async function Blog2DetailPage({
             )}
 
             <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
-
-           
           </div>
         </article>
       </div>

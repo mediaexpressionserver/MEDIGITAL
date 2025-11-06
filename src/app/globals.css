@@ -1,22 +1,38 @@
+/* src/app/globals.css */
+
+/* Tailwind base layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Reset default margins and paddings */
-html, body, #__next {
-  height: 100%;
-}
-body {
-  margin: 0; /* remove default body margin that can create whitespace */
+/* -------------------------------
+   Global Baseline & Font Scaling
+--------------------------------*/
+html {
+  font-size: 16px; /* stable baseline - avoid dynamic overwrites */
+  -webkit-text-size-adjust: 100%; /* prevent iOS from auto-resizing text */
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Ensure the body takes full height */
+html, body, #__next {
+  height: 100%;
+}
+
+/* Body defaults */
 body {
+  margin: 0; /* remove default body margin that can create whitespace */
   min-height: 100vh;
   background-color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* -------------------------------
+   Element & Utility Adjustments
+--------------------------------*/
 
 /* Smooth transition for section elements */
 section {
@@ -29,13 +45,12 @@ img {
   user-drag: none;
 }
 
-/* Improve rendering performance */
+/* Improve rendering performance globally */
 * {
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
 
 /* Hide horizontal scrollbar */
 .no-scrollbar::-webkit-scrollbar {
@@ -45,11 +60,13 @@ img {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Hide unwanted black overlay (custom hero fix) */
 .hero-section > .absolute.bg-black\/60 {
   display: none !important;
 }
 
-/* help browser compositing — add to component or global css */
+/* Help browser compositing — use on horizontal scroll containers */
 .horizontal-container,
 .your-horizontal-container {
   -webkit-transform: translateZ(0);
@@ -59,7 +76,7 @@ img {
   -webkit-font-smoothing: antialiased;
 }
 
-/* e.g. global or module CSS */
+/* Utility: force GPU repaint */
 .force-repaint {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
