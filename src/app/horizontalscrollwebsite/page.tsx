@@ -546,7 +546,7 @@ export default function HorizontalScrollWebsite() {
   }, []);
 
   // Small Windows zoom-fix: gentle root font-size adjustment on some Windows laptops (conservative)
-    // Removed the experimental Windows root-font override because it caused inconsistent
+  // Removed the experimental Windows root-font override because it caused inconsistent
   // scaling across devices. Keep default font-size so responsive units behave consistently.
   useEffect(() => {
     // ensure any previous override is cleared on mount
@@ -576,7 +576,8 @@ export default function HorizontalScrollWebsite() {
       setSpacerHeight(horizontalScrollDistance + bufferZone + transitionZone + vh * verticalSections);
 
       if (containerRef.current) {
-        containerRef.current.style.width = `${totalWidth}px`;
+        // set width in vw so layout scales with viewport and DPR
+        containerRef.current.style.width = `${horizontalSections * 100}vw`;
       }
     };
 
@@ -806,9 +807,9 @@ export default function HorizontalScrollWebsite() {
             >
               {/* Logo inside menu */}
               <div
-  className="flex items-center justify-between px-6 pt-6 absolute top-0 left-0 right-0 z-30"
-  style={{ transform: "translateX(clamp(0px, 4vw, 80px))" }}
->
+                className="flex items-center justify-between px-6 pt-6 absolute top-0 left-0 right-0 z-30"
+                style={{ transform: "translateX(clamp(0px, 4vw, 80px))" }}
+              >
                 <Image
                   src="/images/Group1234.png"
                   alt="Logo"
@@ -820,9 +821,9 @@ export default function HorizontalScrollWebsite() {
 
               {/* Menu Options */}
               <div
-  className="flex flex-col items-start p-6"
-  style={{ transform: "translateY(clamp(24px, 8vh, 120px))" }}
->
+                className="flex flex-col items-start p-6"
+                style={{ transform: "translateY(clamp(24px, 8vh, 120px))" }}
+              >
                 {/* Menu links with inline height */}
                 <a href="#home" className="text-lg font-semibold leading-[50px] landscape:leading-[50px]">
                   Home
@@ -848,10 +849,10 @@ export default function HorizontalScrollWebsite() {
                 src="/images/Smiley.png"
                 alt="Smiley"
                 className="max-h-[300px] max-w-[300px] landscape:w-[200px] landscape:h-[200px]"
-style={{
-  transform:
-    "translateX(clamp(-200px, -12vw, -100px)) translateY(clamp(-100px, -8vh, -24px))",
-}}
+                style={{
+                  transform:
+                    "translateX(clamp(-200px, -12vw, -100px)) translateY(clamp(-100px, -8vh, -24px))",
+                }}
               />
             </div>
 
@@ -877,16 +878,14 @@ style={{
             </div>
           </section>
           {/* Extended Orange Background */}
-          <div className="absolute bottom-[20px] left-0 right-0 h-[80px] bg-[#EEAA45] w-full rounded-b-[3rem] z-`0"></div>
+          <div className="absolute bottom-[20px] left-0 right-0 h-[80px] bg-[#EEAA45] w-full rounded-b-[3rem] z-0"></div>
         </div>
         {/* ... rest of mobile sections unchanged ... */}
-        {/* (I left all mobile markup intact from your original file) */}
-        {/* NOTE: For brevity I did not repeat the entirety of mobile sections here — in the file above they are unchanged. */}
       </div>
     );
   }
 
-  // Desktop Layout (unchanged except the two small edits)
+  // Desktop Layout (unchanged except the responsive edits)
   return (
     <div className="min-w-0 overflow-x-auto">
       {!isMobile && <HeaderScrollListener />}
@@ -896,14 +895,15 @@ style={{
         data-horizontal-container
         className="fixed top-0 left-0 h-screen flex"
         style={{
-          width: containerWidth ? `${containerWidth}px` : "300vw",
+          width: `${3 * 100}vw`,
           transformOrigin: "top left",
           willChange: "transform",
           zIndex: 30,
         }}
       >
         {/* Section 1 - Hero */}
-        <section data-horizontal-section 
+        <section
+          data-horizontal-section
           className="w-screen h-screen relative flex flex-col justify-between bg-black text-white"
           style={{
             backgroundImage: "url('/images/Bg_1.png')",
@@ -926,7 +926,7 @@ style={{
                 {[
                   { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
                   { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
-                  { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital" },
+                  { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" },
                   { src: "/images/Twitter.png", alt: "Twitter", href: "https://twitter.com" },
                   { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
                 ].map((social, index) => (
@@ -1017,18 +1017,15 @@ style={{
 
             {/* Right Content - Smiley Image */}
             <div
-              className="relative flex-shrink-0
-                         scale-110 -translate-x-[180px] -translate-y-[0px]"
+              className="relative flex-shrink-0 scale-110 -translate-x-[180px] -translate-y-[0px]"
             >
               <AnimatedSmiley
                 src="/images/Smiley.png"
                 alt="Smiley"
-                // no translate/scale classes here — animation controls transforms
                 className=""
                 style={{
                   maxWidth: "100%",
                   height: "auto",
-                  // responsive clamp is safer across zooms and DPI
                   width: "clamp(180px, 22vw, 420px)",
                 }}
               />
@@ -1038,65 +1035,65 @@ style={{
 
         {/* Section 2 - Ideas */}
         <section id="ourwaydesktop" data-horizontal-section className="w-screen h-screen flex relative">
-<div
-  className="flex-1 flex flex-col justify-center px-10 bg-white relative z-10 max-h-[80vh]"
-  style={{ transform: "translateX(clamp(24px, 4vw, 100px)) translateY(100px)" }}
->
-  {!showFullText && (
-    <h2 className="text-7xl font-extrabold text-[#EEAA45] leading-tight">
-      Ideas That <br /> Break <br /> Through.
-    </h2>
-  )}
-
-  <div className="mt-4 text-[18px] text-gray-600 w-full">
-    {!showFullText ? (
-      <>
-        <div className="max-h-[48vh] overflow-y-auto pr-4">
-          <p className="max-w-[400px]">
-            We dont play it safe—we push ideas further. A team that tries,
-            learns, and reinvents until your brand{" "}
-            <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
-          </p>
-        </div>
-
-        <div className="mt-6">
-          <button
-            onClick={() => setShowFullText(true)}
-            className="w-[200px] py-2 bg-[#EEAA45] text-white rounded-lg hover:bg-[#EEAA45]"
+          <div
+            className="flex-1 flex flex-col justify-center px-10 bg-white relative z-10 max-h-[80vh]"
+            style={{ transform: "translateX(clamp(24px, 4vw, 100px)) translateY(clamp(18px, 6vh, 100px))" }}
           >
-            Read more
-          </button>
-        </div>
-      </>
-    ) : (
-      <>
-        <div className="max-h-[60vh] overflow-y-auto pr-4">
-          <p className="max-w-[700px] leading-relaxed">
-            Every idea begins as a spark — small, rough, and full of potential. What we do is nurture that spark into something memorable. We dive into insights, explore new angles, and shape concepts that feel alive. Our process is part intuition, part strategy, and entirely driven by passion.
-            <br />
-            <br />
-            We experiment fearlessly, polishing every thought until it reflects clarity and purpose. We rethink, rework, and reinvent until the message feels effortless. For us, creativity isn’t a moment — it’s a commitment.
-            <br />
-            <br />
-            We build ideas that connect emotionally, communicate intelligently, and stand confidently in a crowded world. Whether it’s a brand story, a campaign, or a single line of copy, we make sure it resonates. We’re here to craft work that feels distinctive, meaningful, and undeniably yours.
-            <br />
-            <br />
-            Because for us, “good enough” is never enough.
-          </p>
-        </div>
+            {!showFullText && (
+              <h2 className="text-7xl font-extrabold text-[#EEAA45] leading-tight">
+                Ideas That <br /> Break <br /> Through.
+              </h2>
+            )}
 
-        <div className="mt-4">
-          <button
-            onClick={() => setShowFullText(false)}
-            className="w-[200px] py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400"
-          >
-            Show less
-          </button>
-        </div>
-      </>
-    )}
-  </div>
-</div>
+            <div className="mt-4 text-[18px] text-gray-600 w-full">
+              {!showFullText ? (
+                <>
+                  <div className="max-h-[48vh] overflow-y-auto pr-4">
+                    <p className="max-w-[400px]">
+                      We dont play it safe—we push ideas further. A team that tries,
+                      learns, and reinvents until your brand{" "}
+                      <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
+                    </p>
+                  </div>
+
+                  <div className="mt-6">
+                    <button
+                      onClick={() => setShowFullText(true)}
+                      className="w-[200px] py-2 bg-[#EEAA45] text-white rounded-lg hover:bg-[#EEAA45]"
+                    >
+                      Read more
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="max-h-[60vh] overflow-y-auto pr-4">
+                    <p className="max-w-[700px] leading-relaxed">
+                      Every idea begins as a spark — small, rough, and full of potential. What we do is nurture that spark into something memorable. We dive into insights, explore new angles, and shape concepts that feel alive. Our process is part intuition, part strategy, and entirely driven by passion.
+                      <br />
+                      <br />
+                      We experiment fearlessly, polishing every thought until it reflects clarity and purpose. We rethink, rework, and reinvent until the message feels effortless. For us, creativity isn’t a moment — it’s a commitment.
+                      <br />
+                      <br />
+                      We build ideas that connect emotionally, communicate intelligently, and stand confidently in a crowded world. Whether it’s a brand story, a campaign, or a single line of copy, we make sure it resonates. We’re here to craft work that feels distinctive, meaningful, and undeniably yours.
+                      <br />
+                      <br />
+                      Because for us, “good enough” is never enough.
+                    </p>
+                  </div>
+
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setShowFullText(false)}
+                      className="w-[200px] py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400"
+                    >
+                      Show less
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
 
           <div className="flex-1 relative overflow-hidden">
             <Image
@@ -1115,13 +1112,13 @@ style={{
           data-horizontal-section
           id="servicesdesktop"
           className="w-screen h-screen flex flex-nowrap items-center px-12 bg-gray-200"
-          style={{minWidth: "min(1200px, 92vw)" }} // keeps layout from collapsing on zoom-out (adjust as needed)
+          style={{ minWidth: "min(1200px, 92vw)" }} // keeps layout from collapsing on zoom-out (adjust as needed)
         >
           {/* Left column: service pills (kept constrained) */}
           <div
-  className="flex-shrink-0 w-[420px] p-6"
-  style={{ transform: "translateX(clamp(820px, 18vw, 1500px))" }}
->
+            className="flex-shrink-0 w-[420px] p-6"
+            style={{ transform: "translateX(700px)" }}
+          >
             <div className="max-w-[400px] mx-auto">
               <ServicePillList
                 items={services}
@@ -1151,6 +1148,8 @@ style={{
           </div>
         </section>
         {/* ... the rest of the desktop markup is unchanged ... */}
+
+        {/* Section 4 - Vertical container will follow after horizontal sections */}
       </div>
 
       {/* Vertical Sections Container */}
@@ -1160,14 +1159,14 @@ style={{
         style={{
           height: `${viewportHeight * 5}px`, // Updated from 2 to 5
           opacity: 0,
-          pointerEvents: 'none',
-          transform: 'translateY(100vh)',
-          willChange: 'transform, opacity',
+          pointerEvents: "none",
+          transform: "translateY(100vh)",
+          willChange: "transform, opacity",
           zIndex: 25,
         }}
       >
         {/* Section 4 - Digital Marketing */}
-        <section 
+        <section
           className="w-screen h-screen relative flex flex-col justify-center items-center bg-black text-white"
           style={{
             backgroundImage: "url('/images/digital-marketing.png')",
@@ -1178,22 +1177,22 @@ style={{
         >
           <div className="text-left z-10">
             <h2
-              className="text-7xl font-extrabold text-[#EEAA45] mb-6 translate-x-[-370px] translate-y-[100px]"
+              className="text-7xl font-extrabold text-[#EEAA45] mb-6"
               style={{
-                textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)"
+                transform: "translateX(clamp(-380px, -12vw, -80px)) translateY(clamp(24px, 4vh, 100px))",
+                textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)",
               }}
             >
               Our Way
             </h2>
           </div>
 
-          <div className="relative flex flex-col items-center text-center text-white mt-20 translate-y-[50px]">
+          <div
+            className="relative flex flex-col items-center text-center text-white mt-20"
+            style={{ transform: "translateY(clamp(10px, 4vh, 50px))" }}
+          >
             {/* === Headings row === */}
-            <div className="grid grid-cols-3 gap-12 w-full max-w-5xl mb-3 "
-              style={{
-                textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)"
-              }}
-            >
+            <div className="grid grid-cols-3 gap-12 w-full max-w-5xl mb-3 " style={{ textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)" }}>
               <div>
                 <h2 className="text-3xl font-extrabold text-[#e29a4d] mb-1">Listen</h2>
               </div>
@@ -1211,47 +1210,14 @@ style={{
               <div className="h-[2px] bg-[#e29a4d] w-full" />
 
               {/* arrows */}
-              <div
-                className="absolute left-[16.6%] -translate-x-1/2"
-                style={{ top: "100%" }}
-              >
-                <div
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderLeft: "8px solid transparent",
-                    borderRight: "8px solid transparent",
-                    borderTop: "10px solid white",
-                  }}
-                />
+              <div className="absolute left-[16.6%] -translate-x-1/2" style={{ top: "100%" }}>
+                <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "10px solid white" }} />
               </div>
-              <div
-                className="absolute left-1/2 -translate-x-1/2"
-                style={{ top: "100%" }}
-              >
-                <div
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderLeft: "8px solid transparent",
-                    borderRight: "8px solid transparent",
-                    borderTop: "10px solid white",
-                  }}
-                />
+              <div className="absolute left-1/2 -translate-x-1/2" style={{ top: "100%" }}>
+                <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "10px solid white" }} />
               </div>
-              <div
-                className="absolute left-[83.3%] -translate-x-1/2"
-                style={{ top: "100%" }}
-              >
-                <div
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderLeft: "8px solid transparent",
-                    borderRight: "8px solid transparent",
-                    borderTop: "10px solid white",
-                  }}
-                />
+              <div className="absolute left-[83.3%] -translate-x-1/2" style={{ top: "100%" }}>
+                <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "10px solid white" }} />
               </div>
             </div>
 
@@ -1294,20 +1260,14 @@ style={{
         <section className="w-screen h-screen flex flex-col lg:flex-row overflow-hidden">
           {/* Left: Image side with overlay and text */}
           <div
-  className="relative w-full lg:w-[470px] h-[50vh] lg:h-full"
-  style={{ transform: "translateX(clamp(32px, 6vw, 156px))" }}
->
-            <Image
-              src="/images/laptop-table.png"
-              alt="Design Process"
-              fill
-              className="object-cover object-center"
-              priority
-            />
+            className="relative w-full lg:w-[470px] h-[50vh] lg:h-full"
+            style={{ transform: "translateX(clamp(32px, 6vw, 156px))" }}
+          >
+            <Image src="/images/laptop-table.png" alt="Design Process" fill className="object-cover object-center" priority />
             <div className="absolute inset-0 bg-black bg-opacity-60" />
 
             {/* Text inside image */}
-            <div className="absolute inset-0 flex flex-col justify-center px-10 text-white translate-y-[100px]">
+            <div className="absolute inset-0 flex flex-col justify-center px-10 text-white" style={{ transform: "translateY(clamp(40px, 10vh, 100px))" }}>
               <div className="max-w-md">
                 <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Connect & Collaborate</h3>
                 <p className="text-sm text-gray-200 mb-8">
@@ -1323,36 +1283,32 @@ style={{
 
           {/* Right: Text side */}
           <div
-  className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10"
-  style={{
-    transform:
-      "translateX(clamp(120px, 14vw, 340px)) translateY(clamp(-420px, -22vh, -250px))",
-  }}
->
+            className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10"
+            style={{
+              transform: "translateX(calc(clamp(80px, 12vw, 300px) + 50px)) translateY(clamp(-450px, -16vh, -280px))",
+            }}
+          >
             <div className="mb-10">
               <h2
-  className="text-[220px] font-extrabold text-[#EEAA45] leading-tight"
-  style={{ transform: "translateX(clamp(-290px, -11vw, -150px)) translateY(clamp(230px, 23vh, 380px))" }}
->
-  4
-</h2>
+                className="text-[220px] font-extrabold text-[#EEAA45] leading-tight"
+                style={{ transform: "translateX(clamp(-220px, -12vw, -80px)) translateY(clamp(220px, 22vh, 370px))" }}
+              >
+                4
+              </h2>
               <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold text-[#EEAA45] leading-tight">Daring<br />Steps.</h2>
               <p className="text-xl text-gray-700 mt-2">
                 Reboot Your Brand in <span className="text-[#EEAA45] font-semibold">4 Daring Steps.</span>
               </p>
             </div>
 
-            <div
-  className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl"
-  style={{ transform: "translateX(clamp(-100px, -6vw, -24px)) translateY(clamp(18px, 6vh, 50px))" }}
->
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl" style={{ transform: "translateX(clamp(-100px, -6vw, -24px)) translateY(clamp(18px, 6vh, 50px))" }}>
               <div>
                 <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Define Your Vision</h3>
                 <p className="text-sm text-gray-600">
                   Brilliant campaigns begin with clear objectives. We reveal your brand’s purpose and build a roadmap that connects strategy to results.
                 </p>
               </div>
-              <div className="translate-x-[50px]">
+              <div style={{ transform: "translateX(clamp(12px, 3vw, 50px))" }}>
                 <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Develop a Winning Strategy</h3>
                 <p className="text-sm text-gray-600">
                   Our specialists craft distinctive, results-driven strategies tailored to your brand and audience.
@@ -1363,37 +1319,19 @@ style={{
         </section>
 
         {/* Section 6 - Portfolio */}
-        <section data-horizontal-section
-          id="portfoliodesktop"
-          className="w-screen h-screen relative flex items-center justify-between bg-gray-300 overflow-visible translate-x-0"
-        >
+        <section data-horizontal-section id="portfoliodesktop" className="w-screen h-screen relative flex items-center justify-between bg-gray-300 overflow-visible translate-x-0">
           {/* Left side - Rectangle image */}
-          <div
-  className="w-1/2 relative h-screen flex items-center justify-start"
-  style={{ transform: "translateX(clamp(24px, 6vw, 156px))" }}
->
+          <div className="w-1/2 relative h-screen flex items-center justify-start" style={{ transform: "translateX(clamp(24px, 6vw, 156px))" }}>
             <div className="w-[470px] h-screen relative">
-              <Image
-                src="/images/working-table-with-computer 1.png"
-                alt="Portfolio Rectangle"
-                fill
-                style={{ objectFit: "cover" }}
-              />
+              <Image src="/images/working-table-with-computer 1.png" alt="Portfolio Rectangle" fill style={{ objectFit: "cover" }} />
               {/* black transparent overlay */}
               <div className="absolute inset-0 bg-black bg-opacity-65 z-10" />
             </div>
           </div>
 
-          <div
-  className="absolute inset-0 rounded-lg flex flex-col justify-center items-start p-8 z-20 pointer-events-none"
-  style={{ transform: "translateX(clamp(24px, 6vw, 150px)) translateY(clamp(-300px, -8vh, -190px))" }}
->
-            <h2 className="text-5xl font-bold text-[#EEAA45] mb-4 pointer-events-auto">
-              Our<br />Portfolio
-            </h2>
-            <h1 className="text-2xl font-semibold text-[#EEAA45] mb-2 pointer-events-auto">
-              We Advertise.<br />We Amaze.
-            </h1>
+          <div className="absolute inset-0 rounded-lg flex flex-col justify-center items-start p-8 z-20 pointer-events-none" style={{ transform: "translateX(clamp(24px, 6vw, 150px)) translateY(clamp(-120px, -8vh, -40px))" }}>
+            <h2 className="text-5xl font-bold text-[#EEAA45] mb-4 pointer-events-auto">Our<br />Portfolio</h2>
+            <h1 className="text-2xl font-semibold text-[#EEAA45] mb-2 pointer-events-auto">We Advertise.<br />We Amaze.</h1>
             <p className="text-white text-[10px] leading-relaxed pointer-events-auto">
               <span className="text-[#EEAA45]">“Don’t tell, show”</span> is our mantra. Our work speaks—bold,<br />
               impactful, unforgettable. Explore our portfolio and see<br />
@@ -1402,7 +1340,7 @@ style={{
           </div>
 
           {/* ABSOLUTE full-bleed carousel at the bottom of Section 6 */}
-          <div className="absolute left-0 right-0 bottom-0 z-30 translate-y-[-200px]">
+          <div className="absolute left-0 right-0 bottom-0 z-30" style={{ transform: "translateY(clamp(-60px, -12vh, -200px))" }}>
             <div className="w-full bg-white shadow-xl h-[200px] flex items-center justify-center">
               <div className="w-full max-w-none">
                 <ClientsCarousel apiUrl="/api/clients" />
@@ -1411,68 +1349,16 @@ style={{
           </div>
         </section>
 
-        {/* Simple Modal (keep this after the carousel) */}
-        {modalOpen && activeLogo && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            onClick={closeModal}
-          >
-            <div className="absolute inset-0 bg-black/60" />
-            <div
-              className="relative z-10 max-w-lg w-full bg-white rounded-2xl shadow-xl p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={closeModal}
-                className="absolute top-3 right-3 text-gray-600 hover:text-black"
-              >
-                ✕
-              </button>
-
-              <div className="flex justify-center mb-4">
-                <div className="relative w-48 h-20">
-                  <Image
-                    src={activeLogo.src}
-                    alt={activeLogo.title}
-                    fill
-                    style={{ objectFit: "contain" }}
-                  />
-                </div>
-              </div>
-
-              <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
-                {activeLogo.title}
-              </h3>
-              <p className="text-center text-gray-700 text-sm leading-relaxed">
-                {activeLogo.body}
-              </p>
-            </div>
-          </div>
-        )}
-
+        
         {/* Section 7 - Contact Form */}
-        <section  id="reachusdesktop" className="w-screen h-screen relative flex items-center justify-between bg-white px-10" >
+        <section id="reachusdesktop" className="w-screen h-screen relative flex items-center justify-between bg-white px-10">
           {/* Left side - Rectangle image with content */}
-          <div
-  className="w-1/2 relative h-full flex items-center justify-start"
-  style={{ transform: "translateX(calc(clamp(9px, 3.9vw, 105px) - 10px))", willChange: "transform" }}
->
+          <div className="w-1/2 relative h-full flex items-center justify-start" style={{ transform: "translateX(calc(clamp(9px, 3.9vw, 105px) - 10px))", willChange: "transform" }}>
             <div className="w-[470px] h-screen relative">
-              <Image
-                src="/images/black-wired-phone-black-background 1.png"
-                alt="Contact Rectangle"
-                fill
-                style={{ objectFit: "cover" }}
-              />
+              <Image src="/images/black-wired-phone-black-background 1.png" alt="Contact Rectangle" fill style={{ objectFit: "cover" }} />
               {/* Content overlay */}
               <div className="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex flex-col justify-center items-start p-8">
-                <h2 className="text-5xl font-bold text-[#EEAA45] mb-6">
-                  Let&apos;s<br />
-                  Talk!
-                </h2>
+                <h2 className="text-5xl font-bold text-[#EEAA45] mb-6">Let&apos;s<br />Talk!</h2>
                 <p className="text-white text-sm leading-relaxed">
                   Ready to elevate your brand? Fill our quick form, and<br />
                   we&apos;ll connect soon. Prefer email? Reach us at<br />
@@ -1483,82 +1369,38 @@ style={{
           </div>
 
           {/* Right side - Contact Form */}
-          <div id="reachouttous" className="w-1/2 flex flex-col items-center justify-center px-10 " > 
+          <div id="reachouttous" className="w-1/2 flex flex-col items-center justify-center px-10">
             <div className="w-full max-w-md">
-              <h3 className="text-2xl font-semibold text-[#EEAA45] mb-2">
-                Reach out to us | Say hi
-              </h3>
+              <h3 className="text-2xl font-semibold text-[#EEAA45] mb-2">Reach out to us | Say hi</h3>
 
               <form onSubmit={handleSubmit} className="space-y-6 mt-8">
                 <div>
-                  <input
-                    type="text"
-                    name="name"
-                    placeholder="Name"
-                    required
-                    className="w-full px-0 py-3 border-0 border-b-2 border-gray-300 bg-transparent focus:border-[#EEAA45] focus:outline-none text-gray-700 placeholder-gray-400"
-                  />
+                  <input type="text" name="name" placeholder="Name" required className="w-full px-0 py-3 border-0 border-b-2 border-gray-300 bg-transparent focus:border-[#EEAA45] focus:outline-none text-gray-700 placeholder-gray-400" />
                 </div>
 
                 <div>
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email id"
-                    required
-                    className="w-full px-0 py-3 border-0 border-b-2 border-gray-300 bg-transparent focus:border-[#EEAA45] focus:outline-none text-gray-700 placeholder-gray-400"
-                  />
+                  <input type="email" name="email" placeholder="Email id" required className="w-full px-0 py-3 border-0 border-b-2 border-gray-300 bg-transparent focus:border-[#EEAA45] focus:outline-none text-gray-700 placeholder-gray-400" />
                 </div>
 
                 <div>
-                  <input
-                    type="tel"
-                    name="mobile"
-                    placeholder="Mobile"
-                    className="w-full px-0 py-3 border-0 border-b-2 border-gray-300 bg-transparent focus:border-[#EEAA45] focus:outline-none text-gray-700 placeholder-gray-400"
-                  />
+                  <input type="tel" name="mobile" placeholder="Mobile" className="w-full px-0 py-3 border-0 border-b-2 border-gray-300 bg-transparent focus:border-[#EEAA45] focus:outline-none text-gray-700 placeholder-gray-400" />
                 </div>
 
                 <div>
-                  <textarea
-                    name="message"
-                    placeholder="Message"
-                    rows={3}
-                    required
-                    className="w-full px-0 py-3 border-0 border-b-2 border-gray-300 bg-transparent focus:border-[#EEAA45] focus:outline-none text-gray-700 placeholder-gray-400 resize-none"
-                  />
+                  <textarea name="message" placeholder="Message" rows={3} required className="w-full px-0 py-3 border-0 border-b-2 border-gray-300 bg-transparent focus:border-[#EEAA45] focus:outline-none text-gray-700 placeholder-gray-400 resize-none" />
                 </div>
 
-                <button
-                  type="submit"
-                  className="bg-[#EEAA45] text-white px-8 py-2 rounded-lg hover:bg-[#EEAA45] transition-colors duration-300 font-medium"
-                >
-                  Submit
-                </button>
+                <button type="submit" className="bg-[#EEAA45] text-white px-8 py-2 rounded-lg hover:bg-[#EEAA45] transition-colors duration-300 font-medium">Submit</button>
               </form>
             </div>
           </div>
         </section>
 
         {/* Section 8 - Search and Logos */}
-        <section className="w-screen h-[75vh] relative flex flex-col items-center justify-center bg-black text-white"
-          style={{
-            backgroundImage: "url('/images/Bg_1.png')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-        >
+        <section className="w-screen h-[75vh] relative flex flex-col items-center justify-center bg-black text-white" style={{ backgroundImage: "url('/images/Bg_1.png')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}>
           {/* Main logo  */}
           <div className="flex items-center space-x-6 ">
-              <Image
-                src="/images/Logo.png"
-                alt="Logo"
-                width={300}
-                height={80}
-                className="cursor-pointer"
-  style={{ transform: "translateY(clamp(-50px, -6vh, -18px))" }}
-              />
+            <Image src="/images/Logo.png" alt="Logo" width={300} height={80} className="cursor-pointer" style={{ transform: "translateY(clamp(-50px, -6vh, -18px))" }} />
           </div>
 
           {/* Bottom logos */}
@@ -1566,24 +1408,12 @@ style={{
             {[
               { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
               { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
-              { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital" },
+              { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" },
               { src: "/images/Twitter.png", alt: "Twitter", href: "https://twitter.com" },
               { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
             ].map((social, index) => (
-              <a
-                key={index}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 relative flex items-center justify-center hover:scale-110 transition-transform duration-300"
-              >
-                <Image
-                  src={social.src}
-                  alt={social.alt}
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                />
+              <a key={index} href={social.href} target="_blank" rel="noopener noreferrer" className="w-10 h-10 relative flex items-center justify-center hover:scale-110 transition-transform duration-300">
+                <Image src={social.src} alt={social.alt} width={40} height={40} className="object-contain" />
               </a>
             ))}
           </div>
@@ -1591,11 +1421,7 @@ style={{
       </div>
 
       {/* Spacer for total scroll height */}
-      <div 
-        style={{ 
-          height: spacerHeight ? `${spacerHeight}px` : "1600vh",
-        }}
-      />
+      <div style={{ height: spacerHeight ? `${spacerHeight}px` : "1600vh" }} />
     </div>
   );
-};
+}

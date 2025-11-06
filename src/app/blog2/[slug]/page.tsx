@@ -236,7 +236,7 @@ export default async function Blog2DetailPage({
             {media && media.length > 0 && (
               <section className="mb-6">
                 <h3 className="text-sm text-gray-600 mb-2">Gallery</h3>
-                {/* Client-only gallery wrapper mounts dynamically (ssr:false inside wrapper) */}
+                {/* Client-only gallery wrapper mounts dynamically (ssr:false inside wrapper) updated by nash*/}
                 <MediaGalleryClient media={media} />
               </section>
             )}
