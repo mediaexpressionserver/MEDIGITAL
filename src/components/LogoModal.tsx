@@ -1,12 +1,14 @@
 // src/components/LogoModal.tsx
+"use client";
+
 import React, { useEffect } from "react";
 import Image from "next/image";
-import type { LogoItem } from "@/data/logoData";
+import type { ClientItem } from "@/components/ClientsCarousel";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  item: LogoItem | null;
+  item: ClientItem | null;
 };
 
 export default function LogoModal({ open, onClose, item }: Props) {
@@ -14,8 +16,10 @@ export default function LogoModal({ open, onClose, item }: Props) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (open) window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    if (typeof window !== "undefined" && open) window.addEventListener("keydown", onKey);
+    return () => {
+      if (typeof window !== "undefined") window.removeEventListener("keydown", onKey);
+    };
   }, [open, onClose]);
 
   if (!open || !item) return null;
@@ -60,13 +64,30 @@ export default function LogoModal({ open, onClose, item }: Props) {
         {/* Logo */}
         <div className="flex justify-center mb-4">
           <div className="relative w-48 h-20">
-            <Image src={item.src} alt={item.title} fill style={{ objectFit: "contain" }} />
+            {item.logo ? (
+              <Image
+                src={item.logo}
+                alt={item.title ?? "client logo"}
+                fill
+                style={{ objectFit: "contain" }}
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-sm text-gray-500">
+                No logo
+              </div>
+            )}
           </div>
         </div>
 
         {/* Title & body */}
-        <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{item.title}</h3>
-        <p className="text-sm text-gray-700 leading-relaxed text-center">{item.body}</p>
+        <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+          {item.title}
+        </h3>
+        <div className="text-sm text-gray-700 leading-relaxed text-center">
+          {/* body may contain HTML — keep it consistent with your carousel */}
+          <div dangerouslySetInnerHTML={{ __html: item.body ?? "" }} />
+        </div>
       </div>
     </div>
   );

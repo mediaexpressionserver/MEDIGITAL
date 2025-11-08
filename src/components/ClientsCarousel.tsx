@@ -6,9 +6,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 
-type ApiClient = Record<string, any>;
+export type ClientItem = {
+  id: string;
+  title: string;
+  body: string;
+  logo?: string; // path or URL to logo
+  blogSlug?: string;
+  ctaText?: string;
+};
 
-function normalize(item: ApiClient) {
+/** Normalizes arbitrary API payload into our ClientItem shape */
+function normalize(item: Record<string, any>): ClientItem {
   return {
     id: item.id ?? item.client_id ?? item.clientName ?? String(Math.random()),
     title:
@@ -29,8 +37,8 @@ function normalize(item: ApiClient) {
       item.src ??
       item.image ??
       item.logo ??
-      "",
-    blogSlug: item.blogSlug ?? item.blog_slug ?? item.slug ?? "",
+      undefined,
+    blogSlug: item.blogSlug ?? item.blog_slug ?? item.slug ?? undefined,
     ctaText: item.cta_text ?? item.ctaText ?? "Read full case study",
   };
 }
@@ -40,10 +48,10 @@ type ClientsCarouselProps = {
 };
 
 export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCarouselProps) {
-  const [items, setItems] = useState<Array<ReturnType<typeof normalize>>>([]);
+  const [items, setItems] = useState<ClientItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [active, setActive] = useState<ReturnType<typeof normalize> | null>(null);
+  const [active, setActive] = useState<ClientItem | null>(null);
   const logoScrollRef = useRef<HTMLDivElement | null>(null);
 
   // modal DOM ref for blocking outside events
@@ -55,7 +63,6 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
   // portal mount guard to avoid SSR mismatch
   const [portalMounted, setPortalMounted] = useState(false);
   useEffect(() => {
-    // mark portal mounted on client
     setPortalMounted(true);
   }, []);
 
@@ -91,7 +98,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
    * We compute the modalTop from that anchor's boundingClientRect so the modal is positioned
    * relative to the clicked item (works correctly under transforms).
    */
-  function openModal(item: ReturnType<typeof normalize>, anchorEl?: HTMLElement | null) {
+  function openModal(item: ClientItem, anchorEl?: HTMLElement | null) {
     // set global flag so the page knows a client modal is open (defensive)
     try {
       (window as any).__clientModalOpen = true;
@@ -100,12 +107,12 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
     setActive(item);
 
     // Primary positioning: if anchorEl provided, compute top from its viewport rect.
-    if (anchorEl) {
+    if (anchorEl && typeof anchorEl.getBoundingClientRect === "function") {
       try {
         const rect = anchorEl.getBoundingClientRect();
         // position modal slightly above the center of the logo button (clamp to viewport)
         const desired = Math.round(rect.top + rect.height / 2 - 160); // ~320px modal height center
-        const clamped = Math.min(Math.max(12, desired), Math.max(12, window.innerHeight - 200));
+        const clamped = Math.min(Math.max(12, desired), Math.max(12, (window?.innerHeight ?? 800) - 200));
         setModalTop(clamped);
       } catch (err) {
         setModalTop(null);
@@ -145,7 +152,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
     const prevWidth = document.body.style.width;
 
     if (modalOpen) {
-      scrollYRef.current = window.scrollY || window.pageYOffset || 0;
+      scrollYRef.current = (typeof window !== "undefined" ? window.scrollY : 0) || 0;
       // lock body at current scroll
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollYRef.current}px`;
@@ -160,7 +167,9 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
       document.body.style.width = prevWidth;
       document.body.style.overflow = prevOverflow;
       // restore scroll position
-      window.scrollTo(0, scrollYRef.current || 0);
+      try {
+        if (typeof window !== "undefined") window.scrollTo(0, scrollYRef.current || 0);
+      } catch {}
     }
 
     return () => {
@@ -170,9 +179,11 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
       document.body.style.left = prevLeft;
       document.body.style.width = prevWidth;
       document.body.style.overflow = prevOverflow;
-      window.scrollTo(0, scrollYRef.current || 0);
+      try {
+        if (typeof window !== "undefined") window.scrollTo(0, scrollYRef.current || 0);
+      } catch {}
     };
-  }, [modalOpen, portalMounted]); // fixed-length dependency array
+  }, [modalOpen, portalMounted]);
 
   // Prevent touchmove/wheel events that would scroll the background (important for mobile)
   useEffect(() => {
@@ -193,24 +204,20 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
       document.removeEventListener("touchmove", prevent as EventListener);
       document.removeEventListener("wheel", prevent as EventListener);
     };
-  }, [modalOpen, portalMounted]); // fixed-length dependency array
+  }, [modalOpen, portalMounted]);
 
   // compute modalTop robustly after the modal opens and layout settles
   useEffect(() => {
     if (!portalMounted || !modalOpen) return;
 
-    // If modalTop is already set from the click anchor, keep it but still recompute lightly on resize/scroll.
     let raf = 0;
     const computeTop = () => {
-      // If we already have a modalTop computed from click, we keep it but still clamp it on resize.
       if (modalTop !== null) {
-        const clamped = Math.min(Math.max(12, modalTop), Math.max(12, window.innerHeight - 200));
-        // only update if changed to avoid additional renders
+        const clamped = Math.min(Math.max(12, modalTop), Math.max(12, (window?.innerHeight ?? 800) - 200));
         if (clamped !== modalTop) setModalTop(clamped);
         return;
       }
 
-      // Fallback: use the carousel container's position (existing behavior)
       const el = logoScrollRef.current;
       if (!el) {
         setModalTop(null);
@@ -218,19 +225,17 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
       }
       const rect = el.getBoundingClientRect();
       const desiredTop = Math.round(rect.top - 100);
-      const clamped = Math.min(Math.max(12, desiredTop), Math.max(12, window.innerHeight - 200));
+      const clamped = Math.min(Math.max(12, desiredTop), Math.max(12, (window?.innerHeight ?? 800) - 200));
       setModalTop(clamped);
     };
 
     raf = requestAnimationFrame(() => {
       computeTop();
-      // recompute once after micro-delay for async layout
       setTimeout(() => {
         computeTop();
       }, 60);
     });
 
-    // keep named handler refs so we can remove them correctly
     const onRecompute = () => {
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(computeTop);
@@ -246,7 +251,6 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
       window.removeEventListener("orientationchange", onRecompute);
       window.removeEventListener("scroll", onRecompute);
     };
-    // stable dependency array — include modalTop explicitly so its length is constant
   }, [modalOpen, portalMounted, modalTop]);
 
   // ===== Capturing guard: block anchors/pointer events outside modal while it's open =====
@@ -268,7 +272,6 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
             (e as any).stopImmediatePropagation();
           else (e as Event).stopPropagation();
         } else {
-          // block other interactions
           e.preventDefault();
           if (typeof (e as any).stopImmediatePropagation === "function")
             (e as any).stopImmediatePropagation();
@@ -279,12 +282,10 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
       }
     };
 
-    // add with capture so clicks don't reach page elements
     document.addEventListener("pointerdown", captureBlocker, { capture: true, passive: false } as any);
     document.addEventListener("click", captureBlocker, { capture: true, passive: false } as any);
 
     return () => {
-      // remove using same options shape (browsers ignore options for removeEventListener but passing same capture flag is safe)
       document.removeEventListener("pointerdown", captureBlocker as EventListener, { capture: true } as any);
       document.removeEventListener("click", captureBlocker as EventListener, { capture: true } as any);
     };
@@ -404,28 +405,21 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
               <button
                 key={it.id}
                 type="button"
-                // Prevent capture-phase handlers from acting on this interaction,
-                // but avoid calling preventDefault here to not interfere with browser/UA handlers.
                 onPointerDown={(e) => {
                   try {
-                    // stop other same-phase listeners (native)
                     (e.nativeEvent as any)?.stopImmediatePropagation?.();
                   } catch {}
                 }}
                 onClick={(e) => {
                   try {
-                    // also stop React/DOM propagation immediately
                     (e.nativeEvent as any)?.stopImmediatePropagation?.();
                   } catch {}
                   e.stopPropagation();
 
-                  // *** IMPORTANT FIX: set the global flag SYNCHRONOUSLY so any other
-                  // capture-phase or sync listeners see it and avoid scrolling/navigation.
                   try {
                     (window as any).__clientModalOpen = true;
                   } catch {}
 
-                  // open modal shortly after (microtask). openModal will also set the flag.
                   Promise.resolve().then(() => {
                     openModal(it, e.currentTarget as HTMLElement);
                   });

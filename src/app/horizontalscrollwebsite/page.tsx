@@ -1619,12 +1619,20 @@ useEffect(() => {
             </button>
 
             <div className="relative w-32 sm:w-40 md:w-48 h-16 sm:h-20 md:h-24 mx-auto">
-              {activeLogo?.logo && (
-                <Image src={activeLogo.logo} alt={`${activeLogo.clientName} logo`} fill style={{ objectFit: "contain" }} unoptimized />
-              )}
-            </div>
+  {((activeLogo as any)?.logo || (activeLogo as any)?.logoUrl || (activeLogo as any)?.image) && (
+    <Image
+  src={(activeLogo as any)?.logo || (activeLogo as any)?.logoUrl || (activeLogo as any)?.image}
+  alt={`${(activeLogo as any)?.clientName ?? (activeLogo as any)?.title ?? "client"} logo`}
+  fill
+  style={{ objectFit: "contain" }}
+  unoptimized
+/>
+  )}
+</div>
 
-            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{activeLogo?.clientName}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+  {(activeLogo as any)?.clientName ?? (activeLogo as any)?.title ?? "Client"}
+</h3>
 
             <div className="overflow-auto max-h-[48vh] text-sm text-gray-700 mb-4 prose max-w-none">
               {/* if you have HTML body/content for the logo item, render it here */}
