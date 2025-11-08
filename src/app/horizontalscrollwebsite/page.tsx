@@ -1,4 +1,4 @@
-// src/app/horizontalscrollpage.tsx  (or the file path you provided)
+// src/app/horizontalscrollpage.tsx
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -35,7 +35,57 @@ export default function HorizontalScrollWebsite() {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [showFullText, setShowFullText] = useState(false);
 
-  //useForceRepaintOnNav(containerRef);
+
+
+
+  useForceRepaintOnNav(containerRef);
+
+
+
+  const API_URL = "http://127.0.0.1:5001/send-email";
+
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  const f = e.currentTarget;
+  const fd = new FormData(f);
+  const payload = {
+    name: fd.get("name")?.toString() ?? "",
+    email: fd.get("email")?.toString() ?? "",
+    mobile: fd.get("mobile")?.toString() ?? "",
+    message: fd.get("message")?.toString() ?? "",
+  };
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+      mode: "cors",
+    });
+
+    clearTimeout(timeoutId);
+    const text = await res.text();
+
+    try {
+      const json = JSON.parse(text || "{}");
+      if (res.ok && json.ok) {
+        alert("✅ Message sent");
+        f.reset();
+        return;
+      }
+      alert("❌ Send failed: " + (json.error || text));
+    } catch {
+      alert("❌ Send failed (invalid response): " + text);
+    }
+  } catch (err: any) {
+    console.error("Error sending message:", err);
+    alert("⚠️ Error sending message: " + (err?.message || err));
+  }
+};
 
   // ---------- hooks & tiny handlers (paste here, only once) ----------
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,7 +95,6 @@ export default function HorizontalScrollWebsite() {
   const scrollYRef = useRef<number>(0);
 
   const openModal = (item: LogoItem) => {
-    // set global flag so other listeners (HeaderScrollListener) know a modal is open
     try {
       (window as any).__clientModalOpen = true;
     } catch {}
@@ -55,7 +104,6 @@ export default function HorizontalScrollWebsite() {
   const closeModal = () => {
     setModalOpen(false);
     setActiveLogo(null);
-    // clear global flag
     try {
       (window as any).__clientModalOpen = false;
     } catch {}
@@ -71,62 +119,53 @@ export default function HorizontalScrollWebsite() {
   };
   // --------------------------------------------------------------------
 
-  // Body-lock when modalOpen (robust for mobile & desktop)
-  // Body-lock when modalOpen (robust for mobile & desktop)
-useEffect(() => {
-  // only run client-side
-  if (typeof document === "undefined") return;
+  // Body lock when modalOpen
+  useEffect(() => {
+    if (typeof document === "undefined") return;
 
-  const prev = {
-    position: document.body.style.position || "",
-    top: document.body.style.top || "",
-    left: document.body.style.left || "",
-    width: document.body.style.width || "",
-    overflow: document.body.style.overflow || "",
-  };
+    const prev = {
+      position: document.body.style.position || "",
+      top: document.body.style.top || "",
+      left: document.body.style.left || "",
+      width: document.body.style.width || "",
+      overflow: document.body.style.overflow || "",
+    };
 
-  if (modalOpen) {
-    // save current scroll to restore later
-    scrollYRef.current = window.scrollY || window.pageYOffset || 0;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollYRef.current}px`;
-    document.body.style.left = "0";
-    document.body.style.width = "100%";
-    // hide overflow to remove scrollbars while locked
-    document.body.style.overflow = "hidden";
-  } else {
-    // restore styles
-    document.body.style.position = prev.position;
-    document.body.style.top = prev.top;
-    document.body.style.left = prev.left;
-    document.body.style.width = prev.width;
-    document.body.style.overflow = prev.overflow;
+    if (modalOpen) {
+      scrollYRef.current = window.scrollY || window.pageYOffset || 0;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollYRef.current}px`;
+      document.body.style.left = "0";
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.position = prev.position;
+      document.body.style.top = prev.top;
+      document.body.style.left = prev.left;
+      document.body.style.width = prev.width;
+      document.body.style.overflow = prev.overflow;
 
-    // restore scroll ONLY if we previously saved a positive value
-    try {
-      if (typeof scrollYRef.current === "number" && scrollYRef.current > 0) {
-        window.scrollTo({ top: scrollYRef.current, left: 0, behavior: "auto" });
-      }
-    } catch (err) {
-      // swallow errors — not critical
+      try {
+        if (typeof scrollYRef.current === "number" && scrollYRef.current > 0) {
+          window.scrollTo({ top: scrollYRef.current, left: 0, behavior: "auto" });
+        }
+      } catch {}
     }
-  }
 
-  return () => {
-    // cleanup on unmount - restore styles
-    document.body.style.position = prev.position;
-    document.body.style.top = prev.top;
-    document.body.style.left = prev.left;
-    document.body.style.width = prev.width;
-    document.body.style.overflow = prev.overflow;
+    return () => {
+      document.body.style.position = prev.position;
+      document.body.style.top = prev.top;
+      document.body.style.left = prev.left;
+      document.body.style.width = prev.width;
+      document.body.style.overflow = prev.overflow;
 
-    try {
-      if (typeof scrollYRef.current === "number" && scrollYRef.current > 0) {
-        window.scrollTo({ top: scrollYRef.current, left: 0, behavior: "auto" });
-      }
-    } catch (err) {}
-  };
-}, [modalOpen]);
+      try {
+        if (typeof scrollYRef.current === "number" && scrollYRef.current > 0) {
+          window.scrollTo({ top: scrollYRef.current, left: 0, behavior: "auto" });
+        }
+      } catch {}
+    };
+  }, [modalOpen]);
 
   // prevent background touch/wheel while modal open (mobile)
   useEffect(() => {
@@ -149,340 +188,303 @@ useEffect(() => {
     };
   }, [modalOpen]);
 
-  // REPLACE current handleNavClick with this improved version (keeps your mapping logic)
-  const handleNavClick = (e: React.MouseEvent, href: string) => {
-    // allow /blog (or other full routes) to behave normally
-    if (href === "/blog2") return;
-
-    // only handle hash anchors here
-    // allow normal navigation for non-hash links (Next.js Link or full routes)
-if (!href.startsWith("#")) {
-  return;
-}
-// for hash anchors we prevent default and handle smooth mapping
-e.preventDefault();
-
+  // ---------- NEW: deterministic offset computation ----------
+  function computeOffsetBySumming(container: HTMLElement, child: HTMLElement) {
     try {
-      const selector = href; // e.g. "#servicesdesktop"
-      const el = document.querySelector(selector) as HTMLElement | null;
-      if (!el) {
-        console.warn("Target not found:", selector);
-        return;
-      }
-
-      // If viewport sizes not computed yet, fallback to simple scrolling
-      if (!viewportWidth || !viewportHeight) {
-        const topSimple = el.getBoundingClientRect().top + window.pageYOffset;
-        window.scrollTo({ top: Math.max(0, Math.floor(topSimple)), behavior: "smooth" });
-        // accessibility: focus the element after short delay
-        setTimeout(() => {
-          try {
-            el.setAttribute("tabindex", "-1");
-            el.focus({ preventScroll: true });
-          } catch {}
-        }, 350);
-        return;
-      }
-
-      // Recreate the same geometry used by your scroll handler
-      const horizontalSections = 3;
-      const totalWidth = viewportWidth * horizontalSections;
-      const horizontalScrollDistance = totalWidth - viewportWidth; // This is how much we need to scroll to see all sections
-
-      const bufferZone = viewportHeight * 0.8;
-      const transitionZone = viewportHeight * 1.2;
-
-      const horizontalEnd = horizontalScrollDistance;
-      const bufferEnd = horizontalEnd + bufferZone;
-      const transitionEnd = bufferEnd + transitionZone;
-
-      // helper: compute offsetLeft of `el` relative to `container` using offsetParent chain
-      const computeOffsetLeftWithin = (child: HTMLElement, container: HTMLElement) => {
-        let left = 0;
-        let node: HTMLElement | null = child;
-        while (node && node !== container && node.offsetParent instanceof HTMLElement) {
-          left += node.offsetLeft;
-          node = node.offsetParent as HTMLElement | null;
+      // Prefer explicit horizontal section list if present
+      const sections = Array.from(container.querySelectorAll<HTMLElement>('[data-horizontal-section]'));
+      if (sections.length > 0) {
+        let acc = 0;
+        for (const s of sections) {
+          if (s === child) break;
+          acc += s.offsetWidth || Math.round(s.getBoundingClientRect().width) || 0;
         }
-        // if node === container, we have accumulated the offset; otherwise fall back to bounding rect method
-        if (node === container) return left;
-        // fallback (should be rare)
+        return Math.round(acc);
+      }
+
+      // Fallback: iterate container children and sum widths until child
+      const children = Array.from(container.children) as HTMLElement[];
+      if (children.length > 0) {
+        let acc = 0;
+        for (const ch of children) {
+          if (!(ch instanceof HTMLElement)) continue;
+          if (ch === child) break;
+          acc += ch.offsetWidth || Math.round(ch.getBoundingClientRect().width) || 0;
+        }
+        return Math.round(acc);
+      }
+
+      // Last resort: bounding rect + scrollLeft
+      const childRect = child.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      return Math.round(childRect.left - containerRect.left + (container.scrollLeft || 0));
+    } catch (err) {
+      try {
         const childRect = child.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         return Math.round(childRect.left - containerRect.left + (container.scrollLeft || 0));
-      };
-
-      // 1) If element lives inside the horizontal container -> compute offsetLeft and map to page Y
-      const horizContainer = containerRef.current;
-      if (horizContainer && horizContainer.contains(el)) {
-        // Use offset-based calculation (robust across transforms)
-        const offsetLeftInside = computeOffsetLeftWithin(el, horizContainer);
-
-        // In your layout the page Y for horizontal sections equals the horizontal X offset (identity mapping)
-        let targetY = offsetLeftInside;
-
-        // Clamp to document bounds and scroll
-        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-        const finalY = Math.min(Math.max(0, targetY), maxScroll);
-        window.scrollTo({ top: finalY, behavior: "smooth" });
-
-        // accessibility focus after scroll
-        setTimeout(() => {
-          try {
-            el.setAttribute("tabindex", "-1");
-            el.focus({ preventScroll: true });
-          } catch {}
-        }, 450);
-
-        return;
+      } catch {
+        return 0;
       }
-
-      // 2) If element is inside the verticalSectionsRef -> compute transitionEnd + offsetTop
-      const verticalContainer = verticalSectionsRef.current;
-      if (verticalContainer && verticalContainer.contains(el)) {
-        const offsetInsideVertical = Math.round(
-          el.getBoundingClientRect().top - verticalContainer.getBoundingClientRect().top + (verticalContainer.scrollTop || 0)
-        );
-
-        const headerOffset = 0; // set if you have a fixed header
-        let targetY = Math.max(0, Math.floor(transitionEnd + offsetInsideVertical - headerOffset));
-
-        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-        const finalY = Math.min(targetY, maxScroll);
-
-        window.scrollTo({ top: finalY, behavior: "smooth" });
-
-        setTimeout(() => {
-          try {
-            el.setAttribute("tabindex", "-1");
-            el.focus({ preventScroll: true });
-          } catch {}
-        }, 450);
-
-        return;
-      }
-
-      // 3) Fallback: normal anchor (outside both special containers)
-      const top = el.getBoundingClientRect().top + window.pageYOffset;
-      const headerOffset = 0;
-      const desired = Math.max(0, Math.floor(top - headerOffset));
-      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      const finalTop = Math.min(desired, maxScroll);
-      window.scrollTo({ top: finalTop, behavior: "smooth" });
-
-      setTimeout(() => {
-        try {
-          el.setAttribute("tabindex", "-1");
-          el.focus({ preventScroll: true });
-        } catch {}
-      }, 350);
-    } catch (err) {
-      console.error("handleNavClick error:", err);
     }
-  };
+  }
 
   function forceRepaint(el: HTMLElement | null) {
     if (!el) return;
     try {
-      // 1) apply a GPU layer hint (cheap)
       el.style.willChange = "transform, opacity";
-      // 2) small transform to nudge the compositor
       el.style.transform = "translateZ(0)";
-      // 3) force reflow
       // @ts-ignore
       void el.offsetHeight;
-      // 4) tiny scroll nudge if it is scrollable (keeps layout intact)
       try {
         el.scrollBy?.({ left: 1, behavior: "instant" as any });
         el.scrollBy?.({ left: -1, behavior: "instant" as any });
       } catch {}
-      // restore style (safe to leave willChange or clear it)
       el.style.transform = "";
-      // clear will-change after a short delay so browser can optimize normally
       setTimeout(() => {
         try {
           el.style.willChange = "";
         } catch {}
       }, 300);
-    } catch (err) {
-      // fallback: force reflow only
+    } catch {
       try {
         void el.getBoundingClientRect();
       } catch {}
     }
   }
 
-  // Apply the same transform logic immediately (used when returning via back/nav to ensure correct position)
+  // Apply the same transform logic (keeps your original phase mapping)
   function applyScrollTransforms() {
-  if (!containerRef.current) return;
+    if (!containerRef.current) return;
 
-  // fallback to window sizes if state hasn't been set yet
-  const vw = viewportWidth || window.innerWidth;
-  const vh = viewportHeight || window.innerHeight;
+    const vw = viewportWidth || window.innerWidth;
+    const vh = viewportHeight || window.innerHeight;
+    if (!vw || !vh) return;
 
-
-  if (!vw || !vh) {
-    // try again shortly
-    setTimeout(() => {
-      try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch {}
-    }, 80);
-    return;
-  }
-
-  // keep same section count as your layout
-  const horizontalSections = 3;
-  const horizontalScrollDistance = (vw * horizontalSections) - vw;
-  const bufferZone = vh * 0.8;
-  const transitionZone = vh * 1.2;
-
-  const horizontalEnd = horizontalScrollDistance;
-  const bufferEnd = horizontalEnd + bufferZone;
-  const transitionEnd = bufferEnd + transitionZone;
-
-  const y = window.scrollY || window.pageYOffset;
-
-  // Phase mapping (same logic as onScroll)
-  if (y <= horizontalEnd) {
-    const x = horizontalEnd === 0 ? 0 : (y / horizontalEnd) * horizontalScrollDistance;
-
-    containerRef.current.style.transform = `translateX(-${x}px)`;
-    containerRef.current.style.position = "fixed";
-    containerRef.current.style.top = "0px";
-    containerRef.current.style.zIndex = "30";
-    containerRef.current.style.opacity = "1";
-
-    if (verticalSectionsRef.current) {
-      verticalSectionsRef.current.style.opacity = "0";
-      verticalSectionsRef.current.style.pointerEvents = "none";
-      verticalSectionsRef.current.style.transform = "translateY(100vh)";
-      verticalSectionsRef.current.style.position = "fixed";
-      verticalSectionsRef.current.style.zIndex = "10";
+    const containerClientWidth = containerRef.current.clientWidth || 0;
+    if (containerClientWidth <= vw) {
+      // geometry not ready
+      return;
     }
 
-    return;
-  }
+    const horizontalSections = 3;
+    const horizontalScrollDistance = vw * horizontalSections - vw;
+    const bufferZone = vh * 0.8;
+    const transitionZone = vh * 1.2;
 
-  if (y > horizontalEnd && y <= bufferEnd) {
-    containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px)`;
-    containerRef.current.style.position = "fixed";
-    containerRef.current.style.top = "0px";
-    containerRef.current.style.zIndex = "30";
-    containerRef.current.style.opacity = "1";
+    const horizontalEnd = horizontalScrollDistance;
+    const bufferEnd = horizontalEnd + bufferZone;
+    const transitionEnd = bufferEnd + transitionZone;
 
-    if (verticalSectionsRef.current) {
-      verticalSectionsRef.current.style.opacity = "0";
-      verticalSectionsRef.current.style.pointerEvents = "none";
-      verticalSectionsRef.current.style.transform = "translateY(100vh)";
-      verticalSectionsRef.current.style.position = "fixed";
-      verticalSectionsRef.current.style.zIndex = "10";
+    const y = window.scrollY || window.pageYOffset;
+
+    if (y <= horizontalEnd) {
+      const x = horizontalEnd === 0 ? 0 : (y / horizontalEnd) * horizontalScrollDistance;
+      containerRef.current.style.transform = `translateX(-${x}px)`;
+      containerRef.current.style.position = "fixed";
+      containerRef.current.style.top = "0px";
+      containerRef.current.style.zIndex = "30";
+      containerRef.current.style.opacity = "1";
+
+      if (verticalSectionsRef.current) {
+        verticalSectionsRef.current.style.opacity = "0";
+        verticalSectionsRef.current.style.pointerEvents = "none";
+        verticalSectionsRef.current.style.transform = "translateY(100vh)";
+        verticalSectionsRef.current.style.position = "fixed";
+        verticalSectionsRef.current.style.zIndex = "10";
+      }
+      return;
     }
 
-    return;
-  }
+    if (y > horizontalEnd && y <= bufferEnd) {
+      containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px)`;
+      containerRef.current.style.position = "fixed";
+      containerRef.current.style.top = "0px";
+      containerRef.current.style.zIndex = "30";
+      containerRef.current.style.opacity = "1";
 
-  if (y > bufferEnd && y <= transitionEnd) {
-    const transitionProgress = (y - bufferEnd) / transitionZone;
-    const slideUpDistance = transitionProgress * vh;
-
-    containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${slideUpDistance}px)`;
-    containerRef.current.style.position = "fixed";
-    containerRef.current.style.top = "0px";
-    containerRef.current.style.zIndex = "20";
-    containerRef.current.style.opacity = `${1 - transitionProgress * 0.8}`;
-
-    if (verticalSectionsRef.current) {
-      const slideInDistance = vh * (1 - transitionProgress);
-      verticalSectionsRef.current.style.opacity = `${transitionProgress}`;
-      verticalSectionsRef.current.style.pointerEvents = transitionProgress > 0.5 ? "auto" : "none";
-      verticalSectionsRef.current.style.transform = `translateY(${slideInDistance}px)`;
-      verticalSectionsRef.current.style.position = "fixed";
-      verticalSectionsRef.current.style.zIndex = "25";
+      if (verticalSectionsRef.current) {
+        verticalSectionsRef.current.style.opacity = "0";
+        verticalSectionsRef.current.style.pointerEvents = "none";
+        verticalSectionsRef.current.style.transform = "translateY(100vh)";
+        verticalSectionsRef.current.style.position = "fixed";
+        verticalSectionsRef.current.style.zIndex = "10";
+      }
+      return;
     }
 
-    return;
+    if (y > bufferEnd && y <= transitionEnd) {
+      const transitionProgress = (y - bufferEnd) / transitionZone;
+      const slideUpDistance = transitionProgress * vh;
+      containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${slideUpDistance}px)`;
+      containerRef.current.style.position = "fixed";
+      containerRef.current.style.top = "0px";
+      containerRef.current.style.zIndex = "20";
+      containerRef.current.style.opacity = `${1 - transitionProgress * 0.8}`;
+
+      if (verticalSectionsRef.current) {
+        const slideInDistance = vh * (1 - transitionProgress);
+        verticalSectionsRef.current.style.opacity = `${transitionProgress}`;
+        verticalSectionsRef.current.style.pointerEvents = transitionProgress > 0.5 ? "auto" : "none";
+        verticalSectionsRef.current.style.transform = `translateY(${slideInDistance}px)`;
+        verticalSectionsRef.current.style.position = "fixed";
+        verticalSectionsRef.current.style.zIndex = "25";
+      }
+      return;
+    }
+
+    // final vertical state
+    const verticalScroll = y - transitionEnd;
+    containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${vh * 2}px)`;
+    containerRef.current.style.position = "fixed";
+    containerRef.current.style.zIndex = "10";
+    containerRef.current.style.opacity = "0";
+
+    if (verticalSectionsRef.current) {
+      verticalSectionsRef.current.style.opacity = "1";
+      verticalSectionsRef.current.style.pointerEvents = "auto";
+      verticalSectionsRef.current.style.transform = `translateY(-${verticalScroll}px)`;
+      verticalSectionsRef.current.style.position = "fixed";
+      verticalSectionsRef.current.style.zIndex = "30";
+    }
   }
 
-  // final vertical state
-  const verticalScroll = y - transitionEnd;
-  containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${vh * 2}px)`;
-  containerRef.current.style.position = "fixed";
-  containerRef.current.style.zIndex = "10";
-  containerRef.current.style.opacity = "0";
+  // waitForGeometryAndApply: retry until geometry looks valid then call applyScrollTransforms
+  function waitForGeometryAndApply(timeout = 600, interval = 40) {
+    return new Promise<void>((resolve) => {
+      const start = Date.now();
+      const attempt = () => {
+        try {
+          const vwNow = viewportWidth || window.innerWidth;
+          const vhNow = viewportHeight || window.innerHeight;
+          const container = containerRef.current;
+          const containerW = container ? container.clientWidth : 0;
 
-  if (verticalSectionsRef.current) {
-    verticalSectionsRef.current.style.opacity = "1";
-    verticalSectionsRef.current.style.pointerEvents = "auto";
-    verticalSectionsRef.current.style.transform = `translateY(-${verticalScroll}px)`;
-    verticalSectionsRef.current.style.position = "fixed";
-    verticalSectionsRef.current.style.zIndex = "30";
+          if (vwNow && vhNow && container && containerW > vwNow) {
+            try {
+              applyScrollTransforms();
+            } catch (err) {
+              console.error("[HSW] applyScrollTransforms error:", err);
+            }
+            resolve();
+            return;
+          }
+
+          if (Date.now() - start > timeout) {
+            try {
+              applyScrollTransforms();
+            } catch (err) {
+              console.error("[HSW] applyScrollTransforms (final) error:", err);
+            }
+            resolve();
+            return;
+          }
+
+          setTimeout(attempt, interval);
+        } catch {
+          resolve();
+        }
+      };
+      attempt();
+    });
   }
-}
 
+  // ------------------ onVisible/pageshow handler (robust) ------------------
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    // Run on first mount (next paint)
     requestAnimationFrame(() => forceRepaint(el));
 
-    // Handler that calls repaint on navigation events and re-runs scroll logic
-    // replace existing `const onVisible = () => { ... }` with this
-const onVisible = () => {
-    try {
-    // Wait two animation frames so layout/measurements stabilize (helps bfcache/pageshow).
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        try {
-          const doApply = () => {
-            try {
-              // Only apply transforms when container exists
-              if (containerRef.current) {
-                try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); }
+    const onVisible = () => {
+      try {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const consumeAndJumpStoredNav = async () => {
+              try {
+                const raw = sessionStorage.getItem("hsw_nav_target");
+                if (!raw) return false;
+                const href = raw.startsWith("#") ? raw : `#${raw}`;
+                const id = href.replace(/^#/, "");
+                const targetEl = document.getElementById(id);
+                const container = containerRef.current;
+                if (!targetEl || !container) return false;
 
-                // Second pass for stubborn browsers — run safely and catch errors
-                setTimeout(() => {
-                  try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch (err) { console.error('[HSW] applyScrollTransforms (2nd pass) error:', err); }
-                }, 80);
-              } else {
-                // fallback: try again shortly
+                await waitForGeometryAndApply(600, 40);
+
+                // Prefer summing method (deterministic)
+                const offsetLeftInside = computeOffsetBySumming(container, targetEl);
+
+                let targetY = Math.max(0, offsetLeftInside);
+                const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                targetY = Math.min(targetY, maxScroll);
+
+                // Jump immediately to avoid smooth scroll races
+                try {
+                  window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
+                } catch {}
+
+                try {
+                  sessionStorage.removeItem("hsw_nav_target");
+                } catch {}
+
+                // re-run transforms shortly after
                 setTimeout(() => {
                   try {
-                    if (containerRef.current) { try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } }
-                  } catch {}
-                }, 120);
-              }
-            } catch (err) {
-              console.error('[HSW onVisible doApply] unexpected error:', err);
-            }
-          };
+                    applyScrollTransforms();
+                  } catch (err) {
+                    console.error("[HSW] applyScrollTransforms after stored-nav:", err);
+                  }
+                }, 20);
 
-          if (viewportWidth && viewportHeight) {
-            doApply();
-          } else {
-            setTimeout(doApply, 60);
-          }
-        } catch (err) {
-          console.error('[HSW onVisible inner] error:', err);
-        }
-      });
-    });
-  } catch (err) {
-    console.error('[HSW onVisible] top-level error:', err);
-  }
-};
+                return true;
+              } catch (err) {
+                console.error("[HSW] consumeAndJumpStoredNav error:", err);
+                return false;
+              }
+            };
+
+            consumeAndJumpStoredNav().then(() => {
+              const doApply = () => {
+                try {
+                  if (containerRef.current) {
+                    applyScrollTransforms();
+                    setTimeout(() => {
+                      try {
+                        applyScrollTransforms();
+                      } catch (err) {
+                        console.error("[HSW] applyScrollTransforms (2nd) error:", err);
+                      }
+                    }, 80);
+                  } else {
+                    setTimeout(() => {
+                      try {
+                        if (containerRef.current) applyScrollTransforms();
+                      } catch {}
+                    }, 120);
+                  }
+                } catch (err) {
+                  console.error("[HSW onVisible doApply] unexpected error:", err);
+                }
+              };
+
+              if (viewportWidth && viewportHeight) doApply();
+              else setTimeout(doApply, 60);
+            });
+          });
+        });
+      } catch (err) {
+        console.error("[HSW onVisible] top-level error:", err);
+      }
+    };
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") onVisible();
     };
 
-    // pageshow fires on back/forward navigation (important)
     window.addEventListener("pageshow", onVisible);
-    // popstate for some routers/browsers
     window.addEventListener("popstate", onVisible);
-    // visibilitychange covers tab switching and some navigation scenarios
     document.addEventListener("visibilitychange", onVisibilityChange);
-
-    // optional: also handle resize (if layout depends on viewport)
     window.addEventListener("resize", onVisible);
 
     return () => {
@@ -494,85 +496,97 @@ const onVisible = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
   // Prevent browser automatic scroll restoration and save/restore scroll on tab hide/show.
-// This avoids the browser jumping to top when switching tabs or returning via bfcache.
-useEffect(() => {
-  if (typeof window === "undefined") return;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-  const prevRestoration = (history as any).scrollRestoration;
-  try { history.scrollRestoration = "manual"; } catch {}
-
-  const STORAGE_KEY = `hsw_scroll_${location.pathname}${location.search}${location.hash}`;
-
-  const saveHandler = () => {
+    const prevRestoration = (history as any).scrollRestoration;
     try {
-      sessionStorage.setItem(STORAGE_KEY, String(window.scrollY || window.pageYOffset || 0));
+      history.scrollRestoration = "manual";
     } catch {}
-  };
 
-  const restoreHandler = () => {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (raw !== null) {
-      const y = Number.parseInt(raw, 10);
-      if (!Number.isNaN(y) && y > 0) {
-        // Wait until viewport sizes are available, else small delay and retry
-        const attemptRestore = () => {
-          try {
-            // safe clamp
-            const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-            const target = Math.min(y, maxScroll);
-            window.scrollTo({ top: target, left: 0, behavior: "auto" });
-            // re-run transforms shortly after
-            setTimeout(() => { try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch {} }, 20);
-          } catch (err) {}
-        };
+    const STORAGE_KEY = `hsw_scroll_${location.pathname}${location.search}${location.hash}`;
 
-        if (viewportWidth && viewportHeight) {
-          attemptRestore();
-        } else {
-          // allow your resize logic a moment to set sizes
-          setTimeout(attemptRestore, 80);
+    const saveHandler = () => {
+      try {
+        sessionStorage.setItem(STORAGE_KEY, String(window.scrollY || window.pageYOffset || 0));
+      } catch {}
+    };
+
+    const restoreHandler = () => {
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        if (raw !== null) {
+          const y = Number.parseInt(raw, 10);
+          if (!Number.isNaN(y) && y > 0) {
+            const attemptRestore = () => {
+              try {
+                const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                const target = Math.min(y, maxScroll);
+                window.scrollTo({ top: target, left: 0, behavior: "auto" });
+                setTimeout(() => {
+                  try {
+                    applyScrollTransforms();
+                  } catch (err) {
+                    console.error("[HSW] applyScrollTransforms error:", err);
+                  }
+                }, 20);
+              } catch {}
+            };
+
+            if (viewportWidth && viewportHeight) attemptRestore();
+            else setTimeout(attemptRestore, 80);
+          } else {
+            setTimeout(() => {
+              try {
+                applyScrollTransforms();
+              } catch (err) {
+                console.error("[HSW] applyScrollTransforms error:", err);
+              }
+            }, 20);
+          }
+          return;
         }
-      } else {
-        // no saved positive value — just reapply transforms once sizes are available
-        setTimeout(() => { try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch {} }, 20);
-      }
-      return;
-    }
-    // fallback: reapply transforms
-    setTimeout(() => { try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch {} }, 20);
-  } catch {}
-};
+        setTimeout(() => {
+          try {
+            applyScrollTransforms();
+          } catch (err) {
+            console.error("[HSW] applyScrollTransforms error:", err);
+          }
+        }, 20);
+      } catch {}
+    };
 
-  // Named handlers so we can remove them cleanly
-  const onVisibilitySave = () => { if (document.visibilityState === "hidden") saveHandler(); };
-  const onVisibilityRestore = () => { if (document.visibilityState === "visible") restoreHandler(); };
-  const onPageshow = (ev: any) => { restoreHandler(); };
+    const onVisibilitySave = () => {
+      if (document.visibilityState === "hidden") saveHandler();
+    };
+    const onVisibilityRestore = () => {
+      if (document.visibilityState === "visible") restoreHandler();
+    };
+    const onPageshow = () => {
+      restoreHandler();
+    };
 
-  // Save when page is hidden or about to unload
-  document.addEventListener("visibilitychange", onVisibilitySave);
-  window.addEventListener("pagehide", saveHandler);
-  window.addEventListener("beforeunload", saveHandler);
+    document.addEventListener("visibilitychange", onVisibilitySave);
+    window.addEventListener("pagehide", saveHandler);
+    window.addEventListener("beforeunload", saveHandler);
 
-  // Restore when page is shown / restored from bfcache
-  window.addEventListener("pageshow", onPageshow);
-  document.addEventListener("visibilitychange", onVisibilityRestore);
+    window.addEventListener("pageshow", onPageshow);
+    document.addEventListener("visibilitychange", onVisibilityRestore);
 
-  // initial restore on mount (covers direct navigation)
-  restoreHandler();
+    restoreHandler();
 
-  return () => {
-    try { history.scrollRestoration = prevRestoration; } catch {}
-    window.removeEventListener("pageshow", onPageshow);
-    document.removeEventListener("visibilitychange", onVisibilityRestore);
-    document.removeEventListener("visibilitychange", onVisibilitySave);
-    window.removeEventListener("pagehide", saveHandler);
-    window.removeEventListener("beforeunload", saveHandler);
-  };
-}, []);
-
+    return () => {
+      try {
+        history.scrollRestoration = prevRestoration;
+      } catch {}
+      window.removeEventListener("pageshow", onPageshow);
+      document.removeEventListener("visibilitychange", onVisibilityRestore);
+      document.removeEventListener("visibilitychange", onVisibilitySave);
+      window.removeEventListener("pagehide", saveHandler);
+      window.removeEventListener("beforeunload", saveHandler);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -586,15 +600,14 @@ useEffect(() => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
-  // ----- NEW: centralized header-scroll-to handler
-  // unified header-scroll + initial-hash handler
+  // ----- NEW: centralized header-scroll-to handler -----
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // compute geometry helper used for mapping element -> page Y when needed
+
     const getGeometry = () => {
       const vw = viewportWidth || window.innerWidth;
       const vh = viewportHeight || window.innerHeight;
-      const horizontalSections = 3; // same as your layout
+      const horizontalSections = 3;
       const totalWidth = vw * horizontalSections;
       const horizontalScrollDistance = totalWidth - vw;
       const bufferZone = vh * 0.8;
@@ -605,118 +618,163 @@ useEffect(() => {
       return { vw, vh, horizontalScrollDistance, horizontalEnd, bufferEnd, transitionEnd };
     };
 
-    // helper: compute offsetLeft of `el` relative to `container` using offsetParent chain
-    const computeOffsetLeftWithin = (child: HTMLElement, container: HTMLElement) => {
-      let left = 0;
-      let node: HTMLElement | null = child;
-      while (node && node !== container && node.offsetParent instanceof HTMLElement) {
-        left += node.offsetLeft;
-        node = node.offsetParent as HTMLElement | null;
-      }
-      if (node === container) return left;
-      // fallback to bounding rect if not found
-      const childRect = child.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      return Math.round(childRect.left - containerRect.left + (container.scrollLeft || 0));
-    };
+    // ---- replace with this (Option A: section-index mapping) ----
+// ---- replace with this (Option A: section-index mapping) ----
+const scrollContainerToElement = (el: HTMLElement) => {
+  const container = containerRef.current;
+  if (!container) return false;
 
-    const scrollContainerToElement = (el: HTMLElement) => {
-      const container = containerRef.current;
-      if (!container) return false;
+  // find all horizontal sections (deterministic ordering); fallback to children
+  const sections = Array.from(container.querySelectorAll<HTMLElement>('[data-horizontal-section]'));
+  const sectionEls = sections.length ? sections : Array.from(container.children).filter((n): n is HTMLElement => n instanceof HTMLElement);
 
-      // compute offsetLeft inside container (works for nested children)
-      const offsetLeftInside = computeOffsetLeftWithin(el, container);
+  // find the index of the element within the sections list
+  const idx = sectionEls.findIndex((s) => s === el || s.contains(el));
+  if (idx === -1) {
+    // fallback: try offsetLeft method if element not one of the root sections
+    // (fallthrough to old behavior)
+    const offsetLeftInside = computeOffsetLeftWithin(el, container);
+    const targetY = Math.max(0, Math.round(offsetLeftInside));
+    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo({ top: Math.min(targetY, maxScroll), behavior: "smooth" });
+    setTimeout(() => { try { el.setAttribute("tabindex", "-1"); el.focus({ preventScroll: true }); } catch {} }, 450);
+    return true;
+  }
 
-      // Map horizontal X offset to window Y (your scroll -> transform mapping uses Y to set translateX)
-      const targetY = Math.max(0, offsetLeftInside);
-      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      window.scrollTo({ top: Math.min(targetY, maxScroll), behavior: "smooth" });
+  // deterministic mapping: target window Y = index * viewportWidth
+  const vw = viewportWidth || window.innerWidth;
+  const targetY = Math.max(0, Math.round(idx * vw));
 
-      // focus accessibility
-      setTimeout(() => {
-        try { el.setAttribute("tabindex", "-1"); el.focus({ preventScroll: true }); } catch {}
-      }, 450);
-      return true;
-    };
+  const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  window.scrollTo({ top: Math.min(targetY, maxScroll), behavior: "smooth" });
+
+  // accessibility focus after scroll
+  setTimeout(() => {
+    try {
+      el.setAttribute("tabindex", "-1");
+      el.focus({ preventScroll: true });
+    } catch {}
+  }, 450);
+
+  return true;
+};
+
+// helper fallback (keeps legacy behavior) — use offsetParent chain (prefer over rects)
+function computeOffsetLeftWithin(child: HTMLElement, container: HTMLElement) {
+  let left = 0;
+  let node: HTMLElement | null = child;
+  while (node && node !== container && node.offsetParent instanceof HTMLElement) {
+    left += node.offsetLeft || 0;
+    node = node.offsetParent as HTMLElement | null;
+  }
+  if (node === container) return left;
+  // fallback bounding rect if offsetParent chain fails
+  const childRect = child.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  return Math.round(childRect.left - containerRect.left + (container.scrollLeft || 0));
+}
 
     const scrollWindowToVerticalElement = (el: HTMLElement) => {
       const geom = getGeometry();
-      // if element is inside your vertical container, compute mapped Y:
       if (verticalSectionsRef.current && verticalSectionsRef.current.contains(el)) {
         const verticalRect = verticalSectionsRef.current.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
-        // offset inside the vertical container
         const offsetInside = Math.round(elRect.top - verticalRect.top + (verticalSectionsRef.current.scrollTop || 0));
-        // map to page Y after the horizontal+buffer+transition
         const targetY = Math.max(0, Math.floor(geom.transitionEnd + offsetInside));
         const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
         window.scrollTo({ top: Math.min(targetY, maxScroll), behavior: "smooth" });
-        setTimeout(() => { try { el.setAttribute("tabindex", "-1"); el.focus({ preventScroll: true }); } catch {} }, 450);
+        setTimeout(() => {
+          try {
+            el.setAttribute("tabindex", "-1");
+            el.focus({ preventScroll: true });
+          } catch {}
+        }, 450);
         return true;
       }
 
-      // fallback: element is normal document child — use native scrollIntoView
       try {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
-        setTimeout(() => { try { el.setAttribute("tabindex", "-1"); el.focus({ preventScroll: true }); } catch {} }, 350);
+        setTimeout(() => {
+          try {
+            el.setAttribute("tabindex", "-1");
+            el.focus({ preventScroll: true });
+          } catch {}
+        }, 350);
         return true;
       } catch {
         return false;
       }
     };
 
-    // main handler which attempts container scroll first, then vertical mapping, then fallback
     const performScrollToHash = (hrefOrHash: string) => {
       const raw = String(hrefOrHash || (window.location.hash || ""));
       const id = raw.replace(/^#/, "");
       if (!id) return;
-      // Try exact id first
       let el = document.getElementById(id);
-      // fallback: try lowercase id if not present (defensive)
-      if (!el) el = document.querySelector(`[id="${id.toLowerCase()}"]`) as HTMLElement | null;
-
+      if (!el) el = (document.querySelector(`[id="${id.toLowerCase()}"]`) as HTMLElement | null);
       if (!el) {
         console.warn("[header-scroll-to] target element not found for:", id);
         return;
       }
 
-      // If element is inside horizontal container -> scroll the window to the mapped Y
       if (containerRef.current && containerRef.current.contains(el)) {
         scrollContainerToElement(el);
         return;
       }
 
-      // If element is in verticalSectionsRef or general page -> scroll window appropriately
       scrollWindowToVerticalElement(el);
     };
 
-    // event listener for header dispatch
     const onHeaderEvent = (ev: Event) => {
       const detail = (ev as CustomEvent).detail;
       const href = typeof detail === "string" ? detail : (window.location.hash || "");
-      // small timeout to ensure the page layout mounted after navigation
       setTimeout(() => performScrollToHash(href), 80);
     };
 
-    // handle direct hash on initial load
     const handleInitialHash = () => {
       if (!window.location.hash) return;
       setTimeout(() => performScrollToHash(window.location.hash), 120);
     };
 
     window.addEventListener("header-scroll-to", onHeaderEvent);
-    // also respond to normal hashchange in case user used browser navigation
     const onHashChange = () => performScrollToHash(window.location.hash);
     window.addEventListener("hashchange", onHashChange);
 
-    // initial run
+    // Consume stored nav target if present (one-shot)
+    function consumeStoredHeaderNav(): string | null {
+      try {
+        const raw = sessionStorage.getItem("hsw_nav_target");
+        if (!raw) return null;
+        sessionStorage.removeItem("hsw_nav_target");
+        return raw.startsWith("#") ? raw : `#${raw}`;
+      } catch {
+        return null;
+      }
+    }
+
+    const storedTarget = consumeStoredHeaderNav();
+    if (storedTarget) {
+      setTimeout(() => {
+        try {
+          performScrollToHash(storedTarget);
+        } catch (err) {
+          console.error("[HSW] performScrollToHash(storedTarget) failed:", err);
+          if (window.location.hash) performScrollToHash(window.location.hash);
+        }
+      }, 40);
+    } else {
+      if (window.location.hash) {
+        setTimeout(() => performScrollToHash(window.location.hash), 120);
+      }
+    }
+
     handleInitialHash();
 
     return () => {
       window.removeEventListener("header-scroll-to", onHeaderEvent);
       window.removeEventListener("hashchange", onHashChange);
     };
-  }, [containerRef, verticalSectionsRef, viewportWidth, viewportHeight]); // depends on viewport sizes (mapping better when set)
+  }, [containerRef, verticalSectionsRef, viewportWidth, viewportHeight]);
 
   // Mobile detection
   useEffect(() => {
@@ -736,14 +794,8 @@ useEffect(() => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Small Windows zoom-fix: gentle root font-size adjustment on some Windows laptops (conservative)
-  // Removed the experimental Windows root-font override because it caused inconsistent
-  // scaling across devices. Keep default font-size so responsive units behave consistently.
-  useEffect(() => {
-    // ensure any previous override is cleared on mount
-    try { document.documentElement.style.fontSize = ""; } catch {}
-  }, []);
 
+  
   // Resize / initial sizes (only for desktop)
   useEffect(() => {
     if (isMobile) return;
@@ -752,7 +804,6 @@ useEffect(() => {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      // Calculate exact scroll distances
       const horizontalSections = 3;
       const totalWidth = vw * horizontalSections;
       const horizontalScrollDistance = totalWidth - vw;
@@ -767,7 +818,6 @@ useEffect(() => {
       setSpacerHeight(horizontalScrollDistance + bufferZone + transitionZone + vh * verticalSections);
 
       if (containerRef.current) {
-        // set width in vw so layout scales with viewport and DPR
         containerRef.current.style.width = `${horizontalSections * 100}vw`;
       }
     };
@@ -777,86 +827,25 @@ useEffect(() => {
     return () => window.removeEventListener("resize", updateSizes);
   }, [isMobile]);
 
-  // send email api
-  const API_URL = "http://127.0.0.1:5001/send-email";
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const f = e.currentTarget;
-    const fd = new FormData(f);
-    const payload = {
-      name: fd.get("name")?.toString() ?? "",
-      email: fd.get("email")?.toString() ?? "",
-      mobile: fd.get("mobile")?.toString() ?? "",
-      message: fd.get("message")?.toString() ?? "",
-    };
-
-    try {
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 15000);
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-        mode: "cors",
-      });
-
-      clearTimeout(tid);
-      const text = await res.text();
-      try {
-        const json = JSON.parse(text || "{}");
-        if (res.ok && json.ok) {
-          alert("✅ Message sent");
-          f.reset();
-          return;
-        }
-        alert("❌ Send failed: " + (json.error || text));
-      } catch {
-        alert("❌ Send failed (non-JSON): " + text);
-      }
-    } catch (err: any) {
-      console.error("Fetch error (client):", err);
-      alert("⚠️ Error sending message: " + (err?.message || err));
-    }
-  };
-
-  // Hide horizontal overflow (only for desktop)
-  useEffect(() => {
-    if (isMobile) return;
-    const prev = document.body.style.overflowX;
-    document.body.style.overflowX = "hidden";
-    return () => {
-      document.body.style.overflowX = prev;
-    };
-  }, [isMobile]);
-
   // debug block
   useEffect(() => {
     if (!containerRef.current) return;
-
-    // prefer explicit selector, but fallback to direct child sections
-    let sections = Array.from(containerRef.current.querySelectorAll('[data-horizontal-section]')) as HTMLElement[];
-
+    let sections = Array.from(containerRef.current.querySelectorAll<HTMLElement>('[data-horizontal-section]')) as HTMLElement[];
     if (!sections || sections.length === 0) {
-      // fallback: use direct children that match full-viewport width (w-screen)
       sections = Array.from(containerRef.current.children).filter((ch) => {
         if (!(ch instanceof HTMLElement)) return false;
-        // accept elements that have width roughly equal to viewport width
         const rect = ch.getBoundingClientRect();
-        return Math.abs(rect.width - window.innerWidth) < 4; // small tolerance
+        return Math.abs(rect.width - window.innerWidth) < 4;
       }) as HTMLElement[];
     }
 
     const scrollW = containerRef.current.scrollWidth;
     const clientW = containerRef.current.clientWidth;
     console.info(`[HORIZONTAL] found ${sections.length} sections; scrollWidth=${scrollW}; clientWidth=${clientW}; window.innerWidth=${window.innerWidth}`);
-    // optional: list section ids/classes for debugging
     console.info(sections.map((s, i) => ({ idx: i, id: s.id || null, classes: s.className, width: s.getBoundingClientRect().width })));
   }, [containerRef, containerWidth]);
 
-  // Scroll handler (only for desktop) — kept your logic intact
+  // Scroll handler (only for desktop)
   useEffect(() => {
     if (isMobile) return;
 
@@ -865,7 +854,7 @@ useEffect(() => {
       rafRef.current = requestAnimationFrame(() => {
         const y = window.scrollY || window.pageYOffset;
 
-        const horizontalScrollDistance = (viewportWidth * 3) - viewportWidth; // 2 * viewportWidth
+        const horizontalScrollDistance = (viewportWidth * 3) - viewportWidth;
         const bufferZone = viewportHeight * 0.8;
         const transitionZone = viewportHeight * 1.2;
 
@@ -874,9 +863,7 @@ useEffect(() => {
         const transitionEnd = bufferEnd + transitionZone;
 
         if (y <= horizontalEnd) {
-          // Phase 1: Horizontal scrolling (Hero → Ideas → Services)
           const x = (y / horizontalEnd) * horizontalScrollDistance;
-
           if (containerRef.current) {
             containerRef.current.style.transform = `translateX(-${x}px)`;
             containerRef.current.style.position = "fixed";
@@ -954,6 +941,9 @@ useEffect(() => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [viewportWidth, viewportHeight, isMobile]);
+
+  // --------------------------- RENDER -----------------------------------
+  
 
   // Mobile Layout
   if (isMobile) {
@@ -1078,24 +1068,26 @@ useEffect(() => {
 
   // Desktop Layout (unchanged except the responsive edits)
   return (
-    <div
-      className="min-w-0 overflow-x-auto"
-      aria-hidden={modalOpen ? true : undefined}
-      style={{ pointerEvents: modalOpen ? "none" : undefined }}
-    >
-      {!isMobile && <HeaderScrollListener />}
-      {/* Horizontal fixed container */}
       <div
-        ref={containerRef}
-        data-horizontal-container
-        className="fixed top-0 left-0 h-screen flex"
-        style={{
-          width: `${3 * 100}vw`,
-          transformOrigin: "top left",
-          willChange: "transform",
-          zIndex: 30,
-        }}
-      >
+    className="min-w-0"
+    aria-hidden={modalOpen ? true : undefined}
+    style={{ pointerEvents: modalOpen ? "none" : undefined }}
+  >
+    {!isMobile && <HeaderScrollListener />}
+
+
+    {/* Horizontal fixed container — deterministic width, sections should have data-horizontal-section */}
+    <div
+      ref={containerRef}
+      data-horizontal-container
+      className="horizontal-container fixed top-0 left-0 h-screen flex"
+      style={{
+        width: `${3 * 100}vw`, // 3 sections
+        transformOrigin: "top left",
+        willChange: "transform",
+        zIndex: 30,
+      }}
+    >
         {/* Section 1 - Hero */}
         <section
           data-horizontal-section
@@ -1149,36 +1141,47 @@ useEffect(() => {
           <div className="flex flex-1 px-10 items-center justify-between">
             {/* Left Navigation Menu - Vertical Words */}
             <div className="flex flex-col items-center relative">
-              <ul className="flex flex-col items-center space-y-[80px]">
-                {[
-                  { label: "ABOUT US", href: "#ourwaydesktop" },
-                  { label: "SERVICES", href: "#servicesdesktop" },
-                  { label: "PORTFOLIO", href: "#portfoliodesktop" },
-                  { label: "BLOG", href: "/blog2" },
-                  { label: "REACH US", href: "#reachusdesktop" },
-                ].map((item) => (
-                  <li
-                    key={item.href}
-                    className="text-gray-200 font-medium text-[9px] hover:text-[#EEAA45] transition-colors duration-300"
-                  >
-                    {item.href === "/blog2" ? (
-                      <Link href="/blog2" className="inline-block transform -rotate-90 whitespace-nowrap cursor-pointer hover:text-[#EEAA45] transition-colors duration-300 px-1">
-                        {item.label}
-                      </Link>
-                    ) : (
-                      <a
-                        href={item.href}
-                        onClick={(e) => handleNavClick(e, item.href)}
-                        className="inline-block transform -rotate-90 whitespace-nowrap cursor-pointer hover:text-[#EEAA45] transition-colors duration-300 px-1"
-                      >
-                        {item.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <div className="absolute right-[-30px] top-[-50px] h-[480px] w-[2px] bg-gray-500"></div>
-            </div>
+  <ul className="flex flex-col items-center space-y-[80px]">
+    {[
+      { label: "ABOUT US", href: "#ourwaydesktop" },
+      { label: "SERVICES", href: "#servicesdesktop" },
+      { label: "PORTFOLIO", href: "#portfoliodesktop" },
+      { label: "BLOG", href: "/blog2" },
+      { label: "REACH US", href: "#reachusdesktop" },
+    ].map((item) => (
+      <li
+        key={item.href}
+        className="text-gray-200 font-medium text-[9px] hover:text-[#EEAA45] transition-colors duration-300"
+      >
+        {item.href === "/blog2" ? (
+          <Link
+            href="/blog2"
+            className="inline-block transform -rotate-90 whitespace-nowrap cursor-pointer hover:text-[#EEAA45] transition-colors duration-300 px-1"
+          >
+            {item.label}
+          </Link>
+        ) : (
+          <a
+            href={item.href}
+            onClick={(e) => {
+              e.preventDefault();
+              try {
+                // store the navigation intent for the horizontal scroll page
+                sessionStorage.setItem("hsw_nav_target", item.href);
+              } catch {}
+              // trigger the same custom scroll event used in Header
+              window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: item.href }));
+            }}
+            className="inline-block transform -rotate-90 whitespace-nowrap cursor-pointer hover:text-[#EEAA45] transition-colors duration-300 px-1"
+          >
+            {item.label}
+          </a>
+        )}
+      </li>
+    ))}
+  </ul>
+  <div className="absolute right-[-30px] top-[-50px] h-[480px] w-[2px] bg-gray-500"></div>
+</div>
 
             {/* Center Hero Text */}
             <div className="flex flex-col items-start justify-center space-y-8">

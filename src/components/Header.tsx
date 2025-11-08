@@ -257,31 +257,56 @@ const Header: React.FC = () => {
       return;
     }
 
-    // anchor/hash links
+    // ---------- UPDATED: anchor/hash handling with sessionStorage handshake ----------
     if (href.startsWith("#")) {
       e.preventDefault();
       closeMobile();
 
       const targetRoute = anchorRouteMap[href] ?? "/";
 
-      // if already on the target route, scroll immediately
+      // If already on the route, prefer immediate dispatch / smooth scroll
       if (pathname === targetRoute) {
+        // Special-case horizontal page: let the page handle mapping precisely
+        if (targetRoute === "/horizontalscrollwebsite") {
+          try {
+            // dispatch immediately so the horizontal page's handler gets the event
+            window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: href }));
+          } catch (err) {
+            // fallback to DOM smooth scroll (won't map horizontal X->Y but is a fallback)
+            smoothScrollTo(href);
+          }
+          return;
+        }
+
+        // Normal vertical pages -> native smooth scroll
         smoothScrollTo(href);
         return;
       }
 
-      // otherwise navigate to the route, then dispatch an event to scroll when ready
+      // Not on the target route: store the desired hash BEFORE navigation, then navigate.
+      // Destination page will either read sessionStorage or listen for header-scroll-to.
+      try {
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem("hsw_nav_target", href);
+          } catch (err) {
+            // ignore storage failures
+          }
+        }
+      } catch {}
+
       try {
         await router.push(targetRoute);
       } catch (err) {
         console.warn("[Header] router.push failed for anchor navigation:", err);
       }
 
-      // small delay then notify destination page to scroll
+      // After navigation completes, dispatch the event so destination can act quickly.
+      // Also give the page a tiny moment to mount/layout.
       setTimeout(() => {
         try {
-          // Don't dispatch if a modal was opened between the route push and this timeout
-          if (!isClientModalOpen()) {
+          // don't dispatch if a client modal opened in the meantime
+          if (!isClientModalOpen() && typeof window !== "undefined") {
             window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: href }));
           }
         } catch (err) {

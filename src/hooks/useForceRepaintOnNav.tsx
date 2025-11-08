@@ -7,13 +7,17 @@ import { useEffect, RefObject } from "react";
  *   (pageshow / popstate / visibilitychange). Useful for 'blank until scroll' issues.
  *
  * containerRef: optional ref to a container element to nudge; falls back to document.body.
+ *
+ * NOTE: This version is conservative — it avoids aggressive nudges while a modal is open
+ * or while the provided container looks 'active' (has a transform). That prevents triggering
+ * other scroll/transform handlers (your horizontal mapping) and the 'snap to section 1' bug.
  */
 export default function useForceRepaintOnNav(containerRef?: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = () => (containerRef && containerRef.current) || document.body || null;
 
-    // single repaint nudge attempt
-    function tryRepaintOnce() {
+    // single repaint nudge attempt (aggressive)
+    function tryRepaintOnceAggressive() {
       const target = el();
       if (!target) return;
 
@@ -25,26 +29,24 @@ export default function useForceRepaintOnNav(containerRef?: RefObject<HTMLElemen
         // 2) force layout/read — use `void` to avoid lint warnings about unused expressions
         void (target as HTMLElement).offsetHeight;
 
-        // 3) tiny scroll nudge if it's scrollable
-        // 3) avoid changing window scroll — do a tiny non-layout transform nudge instead
-try {
-  // apply a temporary translateX that does not affect layout, then remove it
-  const prevTransform = (target as HTMLElement).style.transform || "";
-  (target as HTMLElement).style.transition = "transform 80ms linear";
-  (target as HTMLElement).style.transform = `${prevTransform} translateX(0.5px)`;
-  // cleanup rapidly
-  setTimeout(() => {
-    try {
-      (target as HTMLElement).style.transform = prevTransform;
-      // remove transition shortly after
-      setTimeout(() => {
-        try { (target as HTMLElement).style.transition = ""; } catch {}
-      }, 100);
-    } catch {}
-  }, 90);
-} catch (err) {
-  // ignore
-}
+        // 3) tiny transform nudge that doesn't change layout (non-layout)
+        try {
+          const prevTransform = (target as HTMLElement).style.transform || "";
+          (target as HTMLElement).style.transition = "transform 80ms linear";
+          (target as HTMLElement).style.transform = `${prevTransform} translateX(0.5px)`;
+          setTimeout(() => {
+            try {
+              (target as HTMLElement).style.transform = prevTransform;
+              setTimeout(() => {
+                try {
+                  (target as HTMLElement).style.transition = "";
+                } catch {}
+              }, 100);
+            } catch {}
+          }, 90);
+        } catch (err) {
+          // ignore
+        }
 
         // 4) quick transform reset (forces composite update)
         requestAnimationFrame(() => {
@@ -61,14 +63,12 @@ try {
           canvas.style.position = "fixed";
           canvas.style.left = "-9999px";
           canvas.style.top = "-9999px";
-          // draw to ensure GPU has some work
           const ctx = canvas.getContext("2d");
           if (ctx) {
             ctx.fillStyle = "rgba(0,0,0,0)";
             ctx.fillRect(0, 0, 1, 1);
           }
           document.body.appendChild(canvas);
-          // remove shortly after
           setTimeout(() => {
             try {
               document.body.removeChild(canvas);
@@ -92,12 +92,26 @@ try {
       }
     }
 
-    // run multiple attempts spaced out (covers weird timing)
+    // single, minimal repaint attempt (very conservative)
+    function tryRepaintOnceLight() {
+      const target = el();
+      if (!target) return;
+      try {
+        // safe hint: set willChange briefly and read layout in RAF — no transforms, no canvas
+        try { target.style.willChange = "transform, opacity"; } catch {}
+        requestAnimationFrame(() => {
+          try { void (target as HTMLElement).offsetHeight; } catch {}
+          try { target.style.willChange = ""; } catch {}
+        });
+      } catch {}
+    }
+
+    // run multiple aggressive attempts spaced out (covers weird timing)
     function runAttempts() {
-      tryRepaintOnce();
-      const t1 = setTimeout(tryRepaintOnce, 60);
-      const t2 = setTimeout(tryRepaintOnce, 200);
-      const t3 = setTimeout(tryRepaintOnce, 600);
+      tryRepaintOnceAggressive();
+      const t1 = setTimeout(tryRepaintOnceAggressive, 60);
+      const t2 = setTimeout(tryRepaintOnceAggressive, 200);
+      const t3 = setTimeout(tryRepaintOnceAggressive, 600);
       // cleanup
       return () => {
         clearTimeout(t1);
@@ -106,8 +120,33 @@ try {
       };
     }
 
+    // Determine if we should skip aggressive behavior.
+    // Skip if:
+    //  - a modal flag is set (window.__clientModalOpen),
+    //  - or containerRef exists and has a computed transform !== 'none' (i.e., horizontal active).
+    const shouldSkipAggressive = () => {
+      try {
+        if ((window as any).__clientModalOpen) return true;
+        const container = (containerRef && containerRef.current) || null;
+        if (container) {
+          const cs = getComputedStyle(container);
+          if (cs && cs.transform && cs.transform !== "none") return true;
+        }
+      } catch (err) {
+        // ignore and do not block by default
+      }
+      return false;
+    };
+
     // event handler wrappers
     const handler = () => {
+      // If we're in a sensitive state, do the light repaint and exit.
+      if (shouldSkipAggressive()) {
+        tryRepaintOnceLight();
+        return;
+      }
+
+      // Otherwise run the normal aggressive attempts
       const cleanup = runAttempts();
       // also run a micro animation to force paint
       requestAnimationFrame(() => requestAnimationFrame(() => {}));
