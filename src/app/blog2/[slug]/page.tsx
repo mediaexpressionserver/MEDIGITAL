@@ -222,13 +222,18 @@ export default async function Blog2DetailPage({
 
         <article className="bg-white rounded-lg shadow overflow-hidden">
           {feature ? (
-            <div className="w-full h-64 overflow-hidden">
-              {/* native <img> with lazy loading to reduce initial Next/Image overhead */}
-              <img src={feature} alt={title} loading="lazy" className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">No image</div>
-          )}
+  <div className="w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
+    {/*
+      Show image while preserving aspect ratio. `object-contain` will fit the whole
+      image inside the container and leave whitespace (background) if aspect ratios
+      differ. If you prefer the image to be zoomed/cropped to fill the area, change
+      the class on the <img> from `object-contain` to `object-cover`.
+    */}
+    <img src={feature} alt={title} loading="lazy" className="max-w-full max-h-full object-contain" />
+  </div>
+) : (
+  <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">No image</div>
+)}
 
           <div className="p-8">
             <h1 className="text-3xl font-bold mb-4">{title}</h1>
@@ -236,7 +241,7 @@ export default async function Blog2DetailPage({
             {media && media.length > 0 && (
               <section className="mb-6">
                 <h3 className="text-sm text-gray-600 mb-2">Gallery</h3>
-                {/* Client-only gallery wrapper mounts dynamically (ssr:false inside wrapper) updated by nash*/}
+                {/* Client-only gallery wrapper mounts dynamically (ssr:false inside wrapper) updated by nash 1*/}
                 <MediaGalleryClient media={media} />
               </section>
             )}

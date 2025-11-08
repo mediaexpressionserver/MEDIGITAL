@@ -81,7 +81,7 @@ export default function BlogListPage() {
                           src={pickImage(client) as string}
                           alt={client.blogTitle}
                           fill
-                          style={{ objectFit: "cover" }}
+                          style={{ objectFit: "contain" }}
                           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                         />
                       ) : (
@@ -129,7 +129,7 @@ export default function BlogListPage() {
                                 src={pickImage(client) as string}
                                 alt={client.blogTitle}
                                 fill
-                                style={{ objectFit: "cover" }}
+                                style={{ objectFit: "contain" }}
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">

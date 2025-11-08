@@ -26,17 +26,25 @@ export default function useForceRepaintOnNav(containerRef?: RefObject<HTMLElemen
         void (target as HTMLElement).offsetHeight;
 
         // 3) tiny scroll nudge if it's scrollable
-        try {
-          if (typeof (target as HTMLElement).scrollBy === "function") {
-            (target as HTMLElement).scrollBy(1, 0);
-            (target as HTMLElement).scrollBy(-1, 0);
-          } else {
-            window.scrollBy(0, 1);
-            window.scrollBy(0, -1);
-          }
-        } catch (err) {
-          // ignore
-        }
+        // 3) avoid changing window scroll — do a tiny non-layout transform nudge instead
+try {
+  // apply a temporary translateX that does not affect layout, then remove it
+  const prevTransform = (target as HTMLElement).style.transform || "";
+  (target as HTMLElement).style.transition = "transform 80ms linear";
+  (target as HTMLElement).style.transform = `${prevTransform} translateX(0.5px)`;
+  // cleanup rapidly
+  setTimeout(() => {
+    try {
+      (target as HTMLElement).style.transform = prevTransform;
+      // remove transition shortly after
+      setTimeout(() => {
+        try { (target as HTMLElement).style.transition = ""; } catch {}
+      }, 100);
+    } catch {}
+  }, 90);
+} catch (err) {
+  // ignore
+}
 
         // 4) quick transform reset (forces composite update)
         requestAnimationFrame(() => {

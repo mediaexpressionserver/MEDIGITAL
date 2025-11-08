@@ -91,12 +91,13 @@ export default async function Blog2DetailPage({
 
         <article className="bg-white rounded-lg overflow-hidden">
           {feature ? (
-            <div className="relative w-full h-64">
+            <div className="relative w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
+              {/* Preserve image aspect ratio with whitespace; use `object-contain` */}
               <Image
                 src={feature}
                 alt={title}
                 fill
-                style={{ objectFit: "cover" }}
+                style={{ objectFit: "contain" }}
                 loading="lazy"
               />
             </div>

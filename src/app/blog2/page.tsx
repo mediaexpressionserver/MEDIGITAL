@@ -188,7 +188,7 @@ export default function Blog2ListPage() {
               src={image}
               alt={title}
               fill
-              className="object-cover transform transition-transform duration-500 group-hover:scale-105"
+              className="object-contain transform transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">No image</div>
@@ -228,7 +228,7 @@ export default function Blog2ListPage() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
                 {client.logoUrl ? (
-                  <Image src={client.logoUrl} alt={client.clientName || "Author"} width={40} height={40} className="object-cover" />
+                  <Image src={client.logoUrl} alt={client.clientName || "Author"} width={40} height={40} className="object-contain" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Logo</div>
                 )}

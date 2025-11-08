@@ -1,3 +1,4 @@
+// src/components/ClientsCarousel.tsx
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
@@ -38,14 +39,15 @@ type ClientsCarouselProps = {
   apiUrl?: string; // optional prop, default to /api/clients
 };
 
-export default function ClientsCarousel({
-  apiUrl = "/api/clients",
-}: ClientsCarouselProps) {
+export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCarouselProps) {
   const [items, setItems] = useState<Array<ReturnType<typeof normalize>>>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [active, setActive] = useState<ReturnType<typeof normalize> | null>(null);
   const logoScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // modal DOM ref for blocking outside events
+  const modalRef = useRef<HTMLDivElement | null>(null);
 
   // remember scroll position for robust body lock
   const scrollYRef = useRef<number>(0);
@@ -53,8 +55,12 @@ export default function ClientsCarousel({
   // portal mount guard to avoid SSR mismatch
   const [portalMounted, setPortalMounted] = useState(false);
   useEffect(() => {
+    // mark portal mounted on client
     setPortalMounted(true);
   }, []);
+
+  // modal top (px) — computed relative to viewport and applied as position:fixed top: ...
+  const [modalTop, setModalTop] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -64,9 +70,7 @@ export default function ClientsCarousel({
         const res = await fetch(apiUrl);
         if (!res.ok) throw new Error("Failed to fetch clients");
         const data = await res.json();
-        const raw = Array.isArray(data)
-          ? data
-          : data?.clients ?? data?.data ?? data?.entries ?? [];
+        const raw = Array.isArray(data) ? data : data?.clients ?? data?.data ?? data?.entries ?? [];
         const normalized = raw.map(normalize);
         if (mounted) setItems(normalized);
       } catch (err) {
@@ -82,13 +86,45 @@ export default function ClientsCarousel({
     };
   }, [apiUrl]);
 
-  function openModal(item: ReturnType<typeof normalize>) {
+  /**
+   * openModal accepts an optional anchor element (the clicked logo button).
+   * We compute the modalTop from that anchor's boundingClientRect so the modal is positioned
+   * relative to the clicked item (works correctly under transforms).
+   */
+  function openModal(item: ReturnType<typeof normalize>, anchorEl?: HTMLElement | null) {
+    // set global flag so the page knows a client modal is open (defensive)
+    try {
+      (window as any).__clientModalOpen = true;
+    } catch {}
+
     setActive(item);
+
+    // Primary positioning: if anchorEl provided, compute top from its viewport rect.
+    if (anchorEl) {
+      try {
+        const rect = anchorEl.getBoundingClientRect();
+        // position modal slightly above the center of the logo button (clamp to viewport)
+        const desired = Math.round(rect.top + rect.height / 2 - 160); // ~320px modal height center
+        const clamped = Math.min(Math.max(12, desired), Math.max(12, window.innerHeight - 200));
+        setModalTop(clamped);
+      } catch (err) {
+        setModalTop(null);
+      }
+    } else {
+      // fallback: clear and let recompute effect determine position
+      setModalTop(null);
+    }
+
     setModalOpen(true);
   }
+
   function closeModal() {
     setModalOpen(false);
     setActive(null);
+    // clear global flag (use try/catch to avoid SSR issues)
+    try {
+      (window as any).__clientModalOpen = false;
+    } catch {}
   }
 
   function scrollLogosLeft() {
@@ -102,7 +138,6 @@ export default function ClientsCarousel({
   useEffect(() => {
     if (!portalMounted) return;
 
-    // Save current inline styles so we can restore them exactly
     const prevOverflow = document.body.style.overflow;
     const prevPosition = document.body.style.position;
     const prevTop = document.body.style.top;
@@ -110,8 +145,8 @@ export default function ClientsCarousel({
     const prevWidth = document.body.style.width;
 
     if (modalOpen) {
-      // store current scroll and lock body by fixing position
       scrollYRef.current = window.scrollY || window.pageYOffset || 0;
+      // lock body at current scroll
       document.body.style.position = "fixed";
       document.body.style.top = `-${scrollYRef.current}px`;
       document.body.style.left = "0";
@@ -137,7 +172,7 @@ export default function ClientsCarousel({
       document.body.style.overflow = prevOverflow;
       window.scrollTo(0, scrollYRef.current || 0);
     };
-  }, [modalOpen, portalMounted]);
+  }, [modalOpen, portalMounted]); // fixed-length dependency array
 
   // Prevent touchmove/wheel events that would scroll the background (important for mobile)
   useEffect(() => {
@@ -145,7 +180,6 @@ export default function ClientsCarousel({
 
     const prevent = (e: Event) => {
       try {
-        // only prevent default for actual touchmove/wheel events
         e.preventDefault();
       } catch {}
     };
@@ -159,29 +193,138 @@ export default function ClientsCarousel({
       document.removeEventListener("touchmove", prevent as EventListener);
       document.removeEventListener("wheel", prevent as EventListener);
     };
+  }, [modalOpen, portalMounted]); // fixed-length dependency array
+
+  // compute modalTop robustly after the modal opens and layout settles
+  useEffect(() => {
+    if (!portalMounted || !modalOpen) return;
+
+    // If modalTop is already set from the click anchor, keep it but still recompute lightly on resize/scroll.
+    let raf = 0;
+    const computeTop = () => {
+      // If we already have a modalTop computed from click, we keep it but still clamp it on resize.
+      if (modalTop !== null) {
+        const clamped = Math.min(Math.max(12, modalTop), Math.max(12, window.innerHeight - 200));
+        // only update if changed to avoid additional renders
+        if (clamped !== modalTop) setModalTop(clamped);
+        return;
+      }
+
+      // Fallback: use the carousel container's position (existing behavior)
+      const el = logoScrollRef.current;
+      if (!el) {
+        setModalTop(null);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const desiredTop = Math.round(rect.top - 100);
+      const clamped = Math.min(Math.max(12, desiredTop), Math.max(12, window.innerHeight - 200));
+      setModalTop(clamped);
+    };
+
+    raf = requestAnimationFrame(() => {
+      computeTop();
+      // recompute once after micro-delay for async layout
+      setTimeout(() => {
+        computeTop();
+      }, 60);
+    });
+
+    // keep named handler refs so we can remove them correctly
+    const onRecompute = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(computeTop);
+    };
+
+    window.addEventListener("resize", onRecompute);
+    window.addEventListener("orientationchange", onRecompute);
+    window.addEventListener("scroll", onRecompute, { passive: true });
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onRecompute);
+      window.removeEventListener("orientationchange", onRecompute);
+      window.removeEventListener("scroll", onRecompute);
+    };
+    // stable dependency array — include modalTop explicitly so its length is constant
+  }, [modalOpen, portalMounted, modalTop]);
+
+  // ===== Capturing guard: block anchors/pointer events outside modal while it's open =====
+  useEffect(() => {
+    if (!portalMounted) return;
+    if (!modalOpen) return;
+
+    const captureBlocker = (e: Event) => {
+      try {
+        const target = e.target as Element | null;
+        const modalNode = modalRef.current;
+        if (modalNode && target && modalNode.contains(target)) {
+          return; // inside modal -> allow
+        }
+        // block navigation / clickable elements outside modal while modal open
+        if (target && (target.closest?.("a, [data-nav], button[type='submit']") || (target as HTMLElement).tagName === "A")) {
+          e.preventDefault();
+          if (typeof (e as any).stopImmediatePropagation === "function")
+            (e as any).stopImmediatePropagation();
+          else (e as Event).stopPropagation();
+        } else {
+          // block other interactions
+          e.preventDefault();
+          if (typeof (e as any).stopImmediatePropagation === "function")
+            (e as any).stopImmediatePropagation();
+          else (e as Event).stopPropagation();
+        }
+      } catch (err) {
+        // swallow
+      }
+    };
+
+    // add with capture so clicks don't reach page elements
+    document.addEventListener("pointerdown", captureBlocker, { capture: true, passive: false } as any);
+    document.addEventListener("click", captureBlocker, { capture: true, passive: false } as any);
+
+    return () => {
+      // remove using same options shape (browsers ignore options for removeEventListener but passing same capture flag is safe)
+      document.removeEventListener("pointerdown", captureBlocker as EventListener, { capture: true } as any);
+      document.removeEventListener("click", captureBlocker as EventListener, { capture: true } as any);
+    };
   }, [modalOpen, portalMounted]);
 
   if (loading) return <div className="py-8 text-center">Loading clients…</div>;
-  if (items.length === 0)
-    return <div className="py-8 text-center">No clients found yet.</div>;
+  if (items.length === 0) return <div className="py-8 text-center">No clients found yet.</div>;
 
   const modalContent = active ? (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={closeModal}
-    >
-      {/* overlay: isolate overscroll and prevent touch-action pass-through */}
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 p-4" onClick={closeModal}>
       <div
         className="absolute inset-0 bg-black/60"
         style={{ overscrollBehavior: "contain", touchAction: "none" }}
       />
       <div
-        className="relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6"
+        ref={modalRef}
         onClick={(e) => e.stopPropagation()}
+        className="relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6 mx-auto"
+        style={
+          modalTop !== null
+            ? {
+                position: "fixed",
+                left: "50%",
+                transform: "translateX(-50%)",
+                top: `${modalTop}px`,
+                maxHeight: "calc(100vh - 32px)",
+                overflow: "auto",
+              }
+            : {
+                position: "fixed",
+                left: "50%",
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+                maxHeight: "calc(100vh - 32px)",
+                overflow: "auto",
+              }
+        }
       >
         <button
+          type="button"
           onClick={closeModal}
           aria-label="Close"
           className="absolute right-3 top-3 text-gray-600 hover:text-black"
@@ -191,32 +334,19 @@ export default function ClientsCarousel({
 
         <div className="relative w-32 sm:w-40 md:w-48 h-16 sm:h-20 md:h-24 mx-auto">
           {active.logo ? (
-            <Image
-              src={active.logo}
-              alt={`${active.title} logo`}
-              fill
-              style={{ objectFit: "contain" }}
-              unoptimized
-            />
+            <Image src={active.logo} alt={`${active.title} logo`} fill style={{ objectFit: "contain" }} unoptimized />
           ) : null}
         </div>
 
-        <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
-          {active.title}
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{active.title}</h3>
 
-        {/* Scrollable content area with fixed max height */}
         <div className="overflow-auto max-h-[48vh] text-sm text-gray-700 mb-4 prose max-w-none">
           <div dangerouslySetInnerHTML={{ __html: active.body }} />
         </div>
 
-        <div className="flex justify-center gap-3">
+        <div className="flex justify-center gap-3 mb-1">
           {active.blogSlug ? (
-            <Link
-              href={`/blog/${active.blogSlug}`}
-              onClick={closeModal}
-              className="inline-block bg-orange-500 text-white px-4 py-2 rounded text-sm"
-            >
+            <Link href={`/blog/${active.blogSlug}`} onClick={closeModal} className="inline-block bg-orange-500 text-white px-4 py-2 rounded text-sm">
               Read full case study
             </Link>
           ) : (
@@ -229,17 +359,19 @@ export default function ClientsCarousel({
 
   return (
     <>
-      {/* Full-bleed white background — stretches edge-to-edge
-          When modalOpen: aria-hidden + pointer-events:none prevents background interaction/accidental reads */}
       <section
-        className="w-full bg-white overflow-hidden"
+        className="w-full bg-white overflow-hidden clients-carousel-root"
         aria-hidden={modalOpen}
         style={{ pointerEvents: modalOpen ? "none" : undefined }}
       >
         <div className="relative max-w-full mx-auto">
-          {/* Left button */}
           <button
-            onClick={scrollLogosLeft}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              scrollLogosLeft();
+            }}
             aria-label="Previous logos"
             className="absolute left-3 top-1/2 z-10 p-2 -translate-y-1/2 bg-white rounded-full shadow-md focus:outline-none focus:ring"
           >
@@ -248,9 +380,13 @@ export default function ClientsCarousel({
             </svg>
           </button>
 
-          {/* Right button */}
           <button
-            onClick={scrollLogosRight}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              scrollLogosRight();
+            }}
             aria-label="Next logos"
             className="absolute right-3 top-1/2 z-10 p-2 -translate-y-1/2 bg-white rounded-full shadow-md focus:outline-none focus:ring"
           >
@@ -259,7 +395,6 @@ export default function ClientsCarousel({
             </svg>
           </button>
 
-          {/* Scroll area */}
           <div
             ref={logoScrollRef}
             className="flex items-center gap-8 overflow-x-auto py-6 px-6 no-scrollbar scroll-smooth"
@@ -268,21 +403,40 @@ export default function ClientsCarousel({
             {items.map((it) => (
               <button
                 key={it.id}
-                onClick={() => openModal(it)}
-                className="w-28 sm:w-36 md:w-44 flex-shrink-0 flex items-center justify-center bg-white rounded focus:outline-none"
+                type="button"
+                // Prevent capture-phase handlers from acting on this interaction,
+                // but avoid calling preventDefault here to not interfere with browser/UA handlers.
+                onPointerDown={(e) => {
+                  try {
+                    // stop other same-phase listeners (native)
+                    (e.nativeEvent as any)?.stopImmediatePropagation?.();
+                  } catch {}
+                }}
+                onClick={(e) => {
+                  try {
+                    // also stop React/DOM propagation immediately
+                    (e.nativeEvent as any)?.stopImmediatePropagation?.();
+                  } catch {}
+                  e.stopPropagation();
+
+                  // *** IMPORTANT FIX: set the global flag SYNCHRONOUSLY so any other
+                  // capture-phase or sync listeners see it and avoid scrolling/navigation.
+                  try {
+                    (window as any).__clientModalOpen = true;
+                  } catch {}
+
+                  // open modal shortly after (microtask). openModal will also set the flag.
+                  Promise.resolve().then(() => {
+                    openModal(it, e.currentTarget as HTMLElement);
+                  });
+                }}
+                className="w-28 sm:w-36 md:w-44 flex-shrink-0 flex items-center justify-center bg-white rounded focus:outline-none transform transition-transform duration-200 hover:scale-105 focus:scale-105 active:scale-95"
                 aria-label={it.title}
                 title={it.title}
               >
                 {it.logo ? (
                   <div className="relative w-full h-14 sm:h-20 md:h-24 p-2">
-                    <Image
-                      src={it.logo}
-                      alt={`${it.title} logo`}
-                      fill
-                      style={{ objectFit: "contain" }}
-                      sizes="144px"
-                      unoptimized // avoids Next image host config issues for external URLs
-                    />
+                    <Image src={it.logo} alt={`${it.title} logo`} fill style={{ objectFit: "contain" }} sizes="144px" unoptimized />
                   </div>
                 ) : (
                   <div className="text-sm text-gray-600">{it.title}</div>
@@ -294,8 +448,7 @@ export default function ClientsCarousel({
         </div>
       </section>
 
-      {/* Modal - rendered into document.body with a portal to avoid clipping by transformed ancestors */}
-      {portalMounted && modalOpen && active && createPortal(modalContent, document.body)}
+      {portalMounted && modalOpen && active && typeof document !== "undefined" && createPortal(modalContent, document.body)}
     </>
   );
 }

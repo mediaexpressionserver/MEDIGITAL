@@ -1,3 +1,4 @@
+// src/app/horizontalscrollpage.tsx  (or the file path you provided)
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -34,19 +35,30 @@ export default function HorizontalScrollWebsite() {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [showFullText, setShowFullText] = useState(false);
 
-  useForceRepaintOnNav(containerRef);
+  //useForceRepaintOnNav(containerRef);
 
   // ---------- hooks & tiny handlers (paste here, only once) ----------
   const [modalOpen, setModalOpen] = useState(false);
   const [activeLogo, setActiveLogo] = useState<LogoItem | null>(null);
 
+  // store scroll position to restore when unlocking
+  const scrollYRef = useRef<number>(0);
+
   const openModal = (item: LogoItem) => {
+    // set global flag so other listeners (HeaderScrollListener) know a modal is open
+    try {
+      (window as any).__clientModalOpen = true;
+    } catch {}
     setActiveLogo(item);
     setModalOpen(true);
   };
   const closeModal = () => {
     setModalOpen(false);
     setActiveLogo(null);
+    // clear global flag
+    try {
+      (window as any).__clientModalOpen = false;
+    } catch {}
   };
 
   const scrollLogosLeft = () => {
@@ -59,17 +71,96 @@ export default function HorizontalScrollWebsite() {
   };
   // --------------------------------------------------------------------
 
+  // Body-lock when modalOpen (robust for mobile & desktop)
+  // Body-lock when modalOpen (robust for mobile & desktop)
+useEffect(() => {
+  // only run client-side
+  if (typeof document === "undefined") return;
+
+  const prev = {
+    position: document.body.style.position || "",
+    top: document.body.style.top || "",
+    left: document.body.style.left || "",
+    width: document.body.style.width || "",
+    overflow: document.body.style.overflow || "",
+  };
+
+  if (modalOpen) {
+    // save current scroll to restore later
+    scrollYRef.current = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollYRef.current}px`;
+    document.body.style.left = "0";
+    document.body.style.width = "100%";
+    // hide overflow to remove scrollbars while locked
+    document.body.style.overflow = "hidden";
+  } else {
+    // restore styles
+    document.body.style.position = prev.position;
+    document.body.style.top = prev.top;
+    document.body.style.left = prev.left;
+    document.body.style.width = prev.width;
+    document.body.style.overflow = prev.overflow;
+
+    // restore scroll ONLY if we previously saved a positive value
+    try {
+      if (typeof scrollYRef.current === "number" && scrollYRef.current > 0) {
+        window.scrollTo({ top: scrollYRef.current, left: 0, behavior: "auto" });
+      }
+    } catch (err) {
+      // swallow errors — not critical
+    }
+  }
+
+  return () => {
+    // cleanup on unmount - restore styles
+    document.body.style.position = prev.position;
+    document.body.style.top = prev.top;
+    document.body.style.left = prev.left;
+    document.body.style.width = prev.width;
+    document.body.style.overflow = prev.overflow;
+
+    try {
+      if (typeof scrollYRef.current === "number" && scrollYRef.current > 0) {
+        window.scrollTo({ top: scrollYRef.current, left: 0, behavior: "auto" });
+      }
+    } catch (err) {}
+  };
+}, [modalOpen]);
+
+  // prevent background touch/wheel while modal open (mobile)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const prevent = (e: Event) => {
+      try {
+        e.preventDefault();
+      } catch {}
+    };
+
+    if (modalOpen) {
+      document.addEventListener("touchmove", prevent, { passive: false });
+      document.addEventListener("wheel", prevent, { passive: false });
+    }
+
+    return () => {
+      document.removeEventListener("touchmove", prevent as EventListener);
+      document.removeEventListener("wheel", prevent as EventListener);
+    };
+  }, [modalOpen]);
+
   // REPLACE current handleNavClick with this improved version (keeps your mapping logic)
   const handleNavClick = (e: React.MouseEvent, href: string) => {
     // allow /blog (or other full routes) to behave normally
     if (href === "/blog2") return;
 
     // only handle hash anchors here
-    if (!href.startsWith("#")) {
-      e.preventDefault();
-      return;
-    }
-    e.preventDefault();
+    // allow normal navigation for non-hash links (Next.js Link or full routes)
+if (!href.startsWith("#")) {
+  return;
+}
+// for hash anchors we prevent default and handle smooth mapping
+e.preventDefault();
 
     try {
       const selector = href; // e.g. "#servicesdesktop"
@@ -223,93 +314,109 @@ export default function HorizontalScrollWebsite() {
 
   // Apply the same transform logic immediately (used when returning via back/nav to ensure correct position)
   function applyScrollTransforms() {
-    if (!containerRef.current || !viewportWidth || !viewportHeight) return;
-    const y = window.scrollY || window.pageYOffset;
+  if (!containerRef.current) return;
 
-    const horizontalScrollDistance = (viewportWidth * 3) - viewportWidth;
-    const bufferZone = viewportHeight * 0.8;
-    const transitionZone = viewportHeight * 1.2;
+  // fallback to window sizes if state hasn't been set yet
+  const vw = viewportWidth || window.innerWidth;
+  const vh = viewportHeight || window.innerHeight;
 
-    const horizontalEnd = horizontalScrollDistance;
-    const bufferEnd = horizontalEnd + bufferZone;
-    const transitionEnd = bufferEnd + transitionZone;
 
-    // Phase mapping (same logic as onScroll)
-    if (y <= horizontalEnd) {
-      const x = horizontalEnd === 0 ? 0 : (y / horizontalEnd) * horizontalScrollDistance;
+  if (!vw || !vh) {
+    // try again shortly
+    setTimeout(() => {
+      try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch {}
+    }, 80);
+    return;
+  }
 
-      containerRef.current.style.transform = `translateX(-${x}px)`;
-      containerRef.current.style.position = "fixed";
-      containerRef.current.style.top = "0px";
-      containerRef.current.style.zIndex = "30";
-      containerRef.current.style.opacity = "1";
+  // keep same section count as your layout
+  const horizontalSections = 3;
+  const horizontalScrollDistance = (vw * horizontalSections) - vw;
+  const bufferZone = vh * 0.8;
+  const transitionZone = vh * 1.2;
 
-      if (verticalSectionsRef.current) {
-        verticalSectionsRef.current.style.opacity = "0";
-        verticalSectionsRef.current.style.pointerEvents = "none";
-        verticalSectionsRef.current.style.transform = "translateY(100vh)";
-        verticalSectionsRef.current.style.position = "fixed";
-        verticalSectionsRef.current.style.zIndex = "10";
-      }
+  const horizontalEnd = horizontalScrollDistance;
+  const bufferEnd = horizontalEnd + bufferZone;
+  const transitionEnd = bufferEnd + transitionZone;
 
-      return;
-    }
+  const y = window.scrollY || window.pageYOffset;
 
-    if (y > horizontalEnd && y <= bufferEnd) {
-      containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px)`;
-      containerRef.current.style.position = "fixed";
-      containerRef.current.style.top = "0px";
-      containerRef.current.style.zIndex = "30";
-      containerRef.current.style.opacity = "1";
+  // Phase mapping (same logic as onScroll)
+  if (y <= horizontalEnd) {
+    const x = horizontalEnd === 0 ? 0 : (y / horizontalEnd) * horizontalScrollDistance;
 
-      if (verticalSectionsRef.current) {
-        verticalSectionsRef.current.style.opacity = "0";
-        verticalSectionsRef.current.style.pointerEvents = "none";
-        verticalSectionsRef.current.style.transform = "translateY(100vh)";
-        verticalSectionsRef.current.style.position = "fixed";
-        verticalSectionsRef.current.style.zIndex = "10";
-      }
-
-      return;
-    }
-
-    if (y > bufferEnd && y <= transitionEnd) {
-      const transitionProgress = (y - bufferEnd) / transitionZone;
-      const slideUpDistance = transitionProgress * viewportHeight;
-
-      containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${slideUpDistance}px)`;
-      containerRef.current.style.position = "fixed";
-      containerRef.current.style.top = "0px";
-      containerRef.current.style.zIndex = "20";
-      containerRef.current.style.opacity = `${1 - transitionProgress * 0.8}`;
-
-      if (verticalSectionsRef.current) {
-        const slideInDistance = viewportHeight * (1 - transitionProgress);
-        verticalSectionsRef.current.style.opacity = `${transitionProgress}`;
-        verticalSectionsRef.current.style.pointerEvents = transitionProgress > 0.5 ? "auto" : "none";
-        verticalSectionsRef.current.style.transform = `translateY(${slideInDistance}px)`;
-        verticalSectionsRef.current.style.position = "fixed";
-        verticalSectionsRef.current.style.zIndex = "25";
-      }
-
-      return;
-    }
-
-    // final vertical state
-    const verticalScroll = y - transitionEnd;
-    containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${viewportHeight * 2}px)`;
+    containerRef.current.style.transform = `translateX(-${x}px)`;
     containerRef.current.style.position = "fixed";
-    containerRef.current.style.zIndex = "10";
-    containerRef.current.style.opacity = "0";
+    containerRef.current.style.top = "0px";
+    containerRef.current.style.zIndex = "30";
+    containerRef.current.style.opacity = "1";
 
     if (verticalSectionsRef.current) {
-      verticalSectionsRef.current.style.opacity = "1";
-      verticalSectionsRef.current.style.pointerEvents = "auto";
-      verticalSectionsRef.current.style.transform = `translateY(-${verticalScroll}px)`;
+      verticalSectionsRef.current.style.opacity = "0";
+      verticalSectionsRef.current.style.pointerEvents = "none";
+      verticalSectionsRef.current.style.transform = "translateY(100vh)";
       verticalSectionsRef.current.style.position = "fixed";
-      verticalSectionsRef.current.style.zIndex = "30";
+      verticalSectionsRef.current.style.zIndex = "10";
     }
+
+    return;
   }
+
+  if (y > horizontalEnd && y <= bufferEnd) {
+    containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px)`;
+    containerRef.current.style.position = "fixed";
+    containerRef.current.style.top = "0px";
+    containerRef.current.style.zIndex = "30";
+    containerRef.current.style.opacity = "1";
+
+    if (verticalSectionsRef.current) {
+      verticalSectionsRef.current.style.opacity = "0";
+      verticalSectionsRef.current.style.pointerEvents = "none";
+      verticalSectionsRef.current.style.transform = "translateY(100vh)";
+      verticalSectionsRef.current.style.position = "fixed";
+      verticalSectionsRef.current.style.zIndex = "10";
+    }
+
+    return;
+  }
+
+  if (y > bufferEnd && y <= transitionEnd) {
+    const transitionProgress = (y - bufferEnd) / transitionZone;
+    const slideUpDistance = transitionProgress * vh;
+
+    containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${slideUpDistance}px)`;
+    containerRef.current.style.position = "fixed";
+    containerRef.current.style.top = "0px";
+    containerRef.current.style.zIndex = "20";
+    containerRef.current.style.opacity = `${1 - transitionProgress * 0.8}`;
+
+    if (verticalSectionsRef.current) {
+      const slideInDistance = vh * (1 - transitionProgress);
+      verticalSectionsRef.current.style.opacity = `${transitionProgress}`;
+      verticalSectionsRef.current.style.pointerEvents = transitionProgress > 0.5 ? "auto" : "none";
+      verticalSectionsRef.current.style.transform = `translateY(${slideInDistance}px)`;
+      verticalSectionsRef.current.style.position = "fixed";
+      verticalSectionsRef.current.style.zIndex = "25";
+    }
+
+    return;
+  }
+
+  // final vertical state
+  const verticalScroll = y - transitionEnd;
+  containerRef.current.style.transform = `translateX(-${horizontalScrollDistance}px) translateY(-${vh * 2}px)`;
+  containerRef.current.style.position = "fixed";
+  containerRef.current.style.zIndex = "10";
+  containerRef.current.style.opacity = "0";
+
+  if (verticalSectionsRef.current) {
+    verticalSectionsRef.current.style.opacity = "1";
+    verticalSectionsRef.current.style.pointerEvents = "auto";
+    verticalSectionsRef.current.style.transform = `translateY(-${verticalScroll}px)`;
+    verticalSectionsRef.current.style.position = "fixed";
+    verticalSectionsRef.current.style.zIndex = "30";
+  }
+}
 
   useEffect(() => {
     const el = containerRef.current;
@@ -319,46 +426,50 @@ export default function HorizontalScrollWebsite() {
     requestAnimationFrame(() => forceRepaint(el));
 
     // Handler that calls repaint on navigation events and re-runs scroll logic
-    const onVisible = () => {
-      try {
-        forceRepaint(el);
-      } catch (err) {
-        // ignore
-      }
-
-      // ensure layout reads are applied
-      setTimeout(() => {
+    // replace existing `const onVisible = () => { ... }` with this
+const onVisible = () => {
+    try {
+    // Wait two animation frames so layout/measurements stabilize (helps bfcache/pageshow).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
         try {
-          // apply transforms immediately (handles back/forward and bfcache restores)
-          applyScrollTransforms();
-        } catch (err) {
-          // ignore
-        }
+          const doApply = () => {
+            try {
+              // Only apply transforms when container exists
+              if (containerRef.current) {
+                try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); }
 
-        // Fire a synthetic scroll event so the onScroll handler recomputes transforms
-        try {
-          window.dispatchEvent(new Event("scroll"));
-        } catch (err) {
-          // ignore
-        }
+                // Second pass for stubborn browsers — run safely and catch errors
+                setTimeout(() => {
+                  try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch (err) { console.error('[HSW] applyScrollTransforms (2nd pass) error:', err); }
+                }, 80);
+              } else {
+                // fallback: try again shortly
+                setTimeout(() => {
+                  try {
+                    if (containerRef.current) { try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } }
+                  } catch {}
+                }, 120);
+              }
+            } catch (err) {
+              console.error('[HSW onVisible doApply] unexpected error:', err);
+            }
+          };
 
-        // Tiny physical nudge — move 1px down then back up — forces some browsers to repaint and update transforms
-        try {
-          window.scrollBy(0, 1);
-          window.scrollBy(0, -1);
+          if (viewportWidth && viewportHeight) {
+            doApply();
+          } else {
+            setTimeout(doApply, 60);
+          }
         } catch (err) {
-          // ignore
+          console.error('[HSW onVisible inner] error:', err);
         }
-
-        // repeat a second time shortly after for stubborn browsers
-        setTimeout(() => {
-          try {
-            applyScrollTransforms();
-            window.dispatchEvent(new Event("scroll"));
-          } catch (err) {}
-        }, 80);
-      }, 40);
-    };
+      });
+    });
+  } catch (err) {
+    console.error('[HSW onVisible] top-level error:', err);
+  }
+};
 
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") onVisible();
@@ -382,6 +493,86 @@ export default function HorizontalScrollWebsite() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
+  // Prevent browser automatic scroll restoration and save/restore scroll on tab hide/show.
+// This avoids the browser jumping to top when switching tabs or returning via bfcache.
+useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  const prevRestoration = (history as any).scrollRestoration;
+  try { history.scrollRestoration = "manual"; } catch {}
+
+  const STORAGE_KEY = `hsw_scroll_${location.pathname}${location.search}${location.hash}`;
+
+  const saveHandler = () => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, String(window.scrollY || window.pageYOffset || 0));
+    } catch {}
+  };
+
+  const restoreHandler = () => {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (raw !== null) {
+      const y = Number.parseInt(raw, 10);
+      if (!Number.isNaN(y) && y > 0) {
+        // Wait until viewport sizes are available, else small delay and retry
+        const attemptRestore = () => {
+          try {
+            // safe clamp
+            const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+            const target = Math.min(y, maxScroll);
+            window.scrollTo({ top: target, left: 0, behavior: "auto" });
+            // re-run transforms shortly after
+            setTimeout(() => { try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch {} }, 20);
+          } catch (err) {}
+        };
+
+        if (viewportWidth && viewportHeight) {
+          attemptRestore();
+        } else {
+          // allow your resize logic a moment to set sizes
+          setTimeout(attemptRestore, 80);
+        }
+      } else {
+        // no saved positive value — just reapply transforms once sizes are available
+        setTimeout(() => { try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch {} }, 20);
+      }
+      return;
+    }
+    // fallback: reapply transforms
+    setTimeout(() => { try { try { applyScrollTransforms(); } catch (err) { console.error('[HSW] applyScrollTransforms error:', err); } } catch {} }, 20);
+  } catch {}
+};
+
+  // Named handlers so we can remove them cleanly
+  const onVisibilitySave = () => { if (document.visibilityState === "hidden") saveHandler(); };
+  const onVisibilityRestore = () => { if (document.visibilityState === "visible") restoreHandler(); };
+  const onPageshow = (ev: any) => { restoreHandler(); };
+
+  // Save when page is hidden or about to unload
+  document.addEventListener("visibilitychange", onVisibilitySave);
+  window.addEventListener("pagehide", saveHandler);
+  window.addEventListener("beforeunload", saveHandler);
+
+  // Restore when page is shown / restored from bfcache
+  window.addEventListener("pageshow", onPageshow);
+  document.addEventListener("visibilitychange", onVisibilityRestore);
+
+  // initial restore on mount (covers direct navigation)
+  restoreHandler();
+
+  return () => {
+    try { history.scrollRestoration = prevRestoration; } catch {}
+    window.removeEventListener("pageshow", onPageshow);
+    document.removeEventListener("visibilitychange", onVisibilityRestore);
+    document.removeEventListener("visibilitychange", onVisibilitySave);
+    window.removeEventListener("pagehide", saveHandler);
+    window.removeEventListener("beforeunload", saveHandler);
+  };
+}, []);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -887,7 +1078,11 @@ export default function HorizontalScrollWebsite() {
 
   // Desktop Layout (unchanged except the responsive edits)
   return (
-    <div className="min-w-0 overflow-x-auto">
+    <div
+      className="min-w-0 overflow-x-auto"
+      aria-hidden={modalOpen ? true : undefined}
+      style={{ pointerEvents: modalOpen ? "none" : undefined }}
+    >
       {!isMobile && <HeaderScrollListener />}
       {/* Horizontal fixed container */}
       <div
@@ -1036,39 +1231,25 @@ export default function HorizontalScrollWebsite() {
         {/* Section 2 - Ideas */}
         <section id="ourwaydesktop" data-horizontal-section className="w-screen h-screen flex relative">
           <div
-            className="flex-1 flex flex-col justify-center px-10 bg-white relative z-10 max-h-[80vh]"
-            style={{ transform: "translateX(clamp(24px, 4vw, 100px)) translateY(clamp(18px, 6vh, 100px))" }}
+            className="flex-1 flex flex-col justify-center px-10 relative z-10 max-h-[80vh]"
+            style={{ transform: "translateX(calc(clamp(24px, 4vw, 100px) + 50px)) translateY(calc(clamp(18px, 6vh, 100px) + 40px))" }}
           >
             {!showFullText && (
-              <h2 className="text-7xl font-extrabold text-[#EEAA45] leading-tight">
-                Ideas That <br /> Break <br /> Through.
+              <h2 className="text-5xl font-extrabold text-[#EEAA45]  ">
+                Ideas That Break Through.
               </h2>
             )}
 
-            <div className="mt-4 text-[18px] text-gray-600 w-full">
+            <div className="mt-4 text-[15px] text-gray-600 w-full">
               {!showFullText ? (
                 <>
-                  <div className="max-h-[48vh] overflow-y-auto pr-4">
-                    <p className="max-w-[400px]">
+                  <div className="pr-4">
+                    <p className="max-w-[600px]">
                       We dont play it safe—we push ideas further. A team that tries,
                       learns, and reinvents until your brand{" "}
                       <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
-                    </p>
-                  </div>
-
-                  <div className="mt-6">
-                    <button
-                      onClick={() => setShowFullText(true)}
-                      className="w-[200px] py-2 bg-[#EEAA45] text-white rounded-lg hover:bg-[#EEAA45]"
-                    >
-                      Read more
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="max-h-[60vh] overflow-y-auto pr-4">
-                    <p className="max-w-[700px] leading-relaxed">
+                     <br />
+                      <br />
                       Every idea begins as a spark — small, rough, and full of potential. What we do is nurture that spark into something memorable. We dive into insights, explore new angles, and shape concepts that feel alive. Our process is part intuition, part strategy, and entirely driven by passion.
                       <br />
                       <br />
@@ -1082,14 +1263,11 @@ export default function HorizontalScrollWebsite() {
                     </p>
                   </div>
 
-                  <div className="mt-4">
-                    <button
-                      onClick={() => setShowFullText(false)}
-                      className="w-[200px] py-2 bg-gray-300 text-black rounded-lg hover:bg-gray-400"
-                    >
-                      Show less
-                    </button>
-                  </div>
+                  
+                </>
+              ) : (
+                <>
+                  
                 </>
               )}
             </div>
@@ -1116,10 +1294,10 @@ export default function HorizontalScrollWebsite() {
         >
           {/* Left column: service pills (kept constrained) */}
           <div
-            className="flex-shrink-0 w-[420px] p-6"
-            style={{ transform: "translateX(700px)" }}
+            className="flex-shrink-0 w-[350px] p-3"
+            style={{ transform: "translateX(800px)" }}
           >
-            <div className="max-w-[400px] mx-auto">
+            <div className="max-w-[350px] mx-auto">
               <ServicePillList
                 items={services}
                 iconSize={60}
@@ -1130,9 +1308,9 @@ export default function HorizontalScrollWebsite() {
           </div>
 
           {/* Right column: text — use padding instead of translate to shift */}
-          <div className="flex-1 min-w-0 md:translate-x-[-30%] lg:translate-x-[-35%]">
+         <div className="flex-1 min-w-0 md:translate-x-[-30%] lg:translate-x-[-20%]">
             <div className="max-w-2xl pl-6">
-              <h2 className="text-5xl lg:text-7xl font-extrabold text-black mb-4 leading-tight">
+              <h2 className="text-6xl lg:text-8xl font-extrabold text-black mb-4 leading-tight">
                 Need a <br />digital<br />marketing<br />partner?
               </h2>
 
@@ -1259,36 +1437,19 @@ export default function HorizontalScrollWebsite() {
         {/* Section 5 - Design Process */}
         <section className="w-screen h-screen flex flex-col lg:flex-row overflow-hidden">
           {/* Left: Image side with overlay and text */}
-          <div
-            className="relative w-full lg:w-[470px] h-[50vh] lg:h-full"
-            style={{ transform: "translateX(clamp(32px, 6vw, 156px))" }}
-          >
+          <div className="relative w-full lg:w-[470px] h-[50vh] lg:h-full" style={{ transform: "translateX(clamp(32px, 6vw, 156px))" }}>
             <Image src="/images/laptop-table.png" alt="Design Process" fill className="object-cover object-center" priority />
             <div className="absolute inset-0 bg-black bg-opacity-60" />
-
-            {/* Text inside image */}
-            <div className="absolute inset-0 flex flex-col justify-center px-10 text-white" style={{ transform: "translateY(clamp(40px, 10vh, 100px))" }}>
-              <div className="max-w-md">
-                <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Connect & Collaborate</h3>
-                <p className="text-sm text-gray-200 mb-8">
-                  We begin by immersing ourselves in your brand&apos;s universe. Our international client base feeds on trust, partnerships, and solid referrals.
-                </p>
-                <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Make It Happen</h3>
-                <p className="text-sm text-gray-200">
-                  Concepts are only as good as their implementation. Our teams execute with precision and creativity to deliver impactful results.
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Right: Text side */}
           <div
             className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10"
             style={{
-              transform: "translateX(calc(clamp(80px, 12vw, 300px) + 50px)) translateY(clamp(-450px, -16vh, -280px))",
+              transform: "translateX(calc(clamp(80px, 12vw, 300px) + 50px)) translateY(clamp(-300px, -10vh, -130px))",
             }}
           >
-            <div className="mb-10">
+            <div className="mb-10" style={{ transform: "translateX(80px) translateY(-50px)" }}>
               <h2
                 className="text-[220px] font-extrabold text-[#EEAA45] leading-tight"
                 style={{ transform: "translateX(clamp(-220px, -12vw, -80px)) translateY(clamp(220px, 22vh, 370px))" }}
@@ -1300,6 +1461,22 @@ export default function HorizontalScrollWebsite() {
                 Reboot Your Brand in <span className="text-[#EEAA45] font-semibold">4 Daring Steps.</span>
               </p>
             </div>
+
+              <div className="max-w-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-start" style={{ transform: 'translateX(-35px)' }}>
+                <div className="text-left" style={{ transform: 'translateX(-55px)' }}>
+                  <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Connect &amp; Collaborate</h3>
+                  <p className="text-sm text-gray-700">
+                    We begin by immersing ourselves in your brand&apos;s universe. Our international client base feeds on trust, partnerships, and solid referrals.
+                  </p>
+                </div>
+
+                <div className="text-left">
+                  <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Make It Happen</h3>
+                  <p className="text-sm text-gray-700">
+                    Concepts are only as good as their implementation. Our teams execute with precision and creativity to deliver impactful results.
+                  </p>
+                </div>
+              </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl" style={{ transform: "translateX(clamp(-100px, -6vw, -24px)) translateY(clamp(18px, 6vh, 50px))" }}>
               <div>
@@ -1329,7 +1506,7 @@ export default function HorizontalScrollWebsite() {
             </div>
           </div>
 
-          <div className="absolute inset-0 rounded-lg flex flex-col justify-center items-start p-8 z-20 pointer-events-none" style={{ transform: "translateX(clamp(24px, 6vw, 150px)) translateY(clamp(-120px, -8vh, -40px))" }}>
+          <div className="absolute inset-0 rounded-lg flex flex-col justify-center items-start p-8 z-20 pointer-events-none" style={{ transform: "translateX(clamp(24px, 6vw, 150px)) translateY(clamp(-220px, -12vh, -140px))" }}>
             <h2 className="text-5xl font-bold text-[#EEAA45] mb-4 pointer-events-auto">Our<br />Portfolio</h2>
             <h1 className="text-2xl font-semibold text-[#EEAA45] mb-2 pointer-events-auto">We Advertise.<br />We Amaze.</h1>
             <p className="text-white text-[10px] leading-relaxed pointer-events-auto">
@@ -1340,7 +1517,7 @@ export default function HorizontalScrollWebsite() {
           </div>
 
           {/* ABSOLUTE full-bleed carousel at the bottom of Section 6 */}
-          <div className="absolute left-0 right-0 bottom-0 z-30" style={{ transform: "translateY(clamp(-60px, -12vh, -200px))" }}>
+          <div className="absolute left-0 right-0 bottom-0 z-30" style={{ transform: "translateY(calc(clamp(-60px, -12vh, -200px) - 100px))" }}>
             <div className="w-full bg-white shadow-xl h-[200px] flex items-center justify-center">
               <div className="w-full max-w-none">
                 <ClientsCarousel apiUrl="/api/clients" />
@@ -1422,6 +1599,54 @@ export default function HorizontalScrollWebsite() {
 
       {/* Spacer for total scroll height */}
       <div style={{ height: spacerHeight ? `${spacerHeight}px` : "1600vh" }} />
+
+      {/* Example page-level modal rendering (if you plan to show a modal here) */}
+      {modalOpen && activeLogo ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[60] p-4 flex items-start justify-center"
+          onClick={closeModal}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6 mx-auto"
+            style={{ maxHeight: "calc(100vh - 32px)", overflow: "auto" }}
+          >
+            <button type="button" onClick={closeModal} aria-label="Close" className="absolute right-3 top-3 text-gray-600 hover:text-black">
+              ✕
+            </button>
+
+            <div className="relative w-32 sm:w-40 md:w-48 h-16 sm:h-20 md:h-24 mx-auto">
+              {activeLogo?.logo && (
+                <Image src={activeLogo.logo} alt={`${activeLogo.clientName} logo`} fill style={{ objectFit: "contain" }} unoptimized />
+              )}
+            </div>
+
+            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{activeLogo?.clientName}</h3>
+
+            <div className="overflow-auto max-h-[48vh] text-sm text-gray-700 mb-4 prose max-w-none">
+              {/* if you have HTML body/content for the logo item, render it here */}
+              {activeLogo?.description ? (
+                <div dangerouslySetInnerHTML={{ __html: activeLogo.description }} />
+              ) : (
+                <p className="text-gray-700">No case study content available.</p>
+              )}
+            </div>
+
+            <div className="flex justify-center gap-3 mb-1">
+              {activeLogo?.blogSlug ? (
+                <Link href={`/blog/${activeLogo.blogSlug}`} onClick={closeModal} className="inline-block bg-orange-500 text-white px-4 py-2 rounded text-sm">
+                  Read full case study
+                </Link>
+              ) : (
+                <span className="text-sm text-gray-500">No blog linked</span>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

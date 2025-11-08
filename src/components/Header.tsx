@@ -38,6 +38,15 @@ const Header: React.FC = () => {
     setIsClient(true);
   }, []);
 
+  // helper to read the global modal flag set by ClientsCarousel
+  const isClientModalOpen = () => {
+    try {
+      return typeof window !== "undefined" && !!(window as any).__clientModalOpen;
+    } catch {
+      return false;
+    }
+  };
+
   // anchor ids (from navItems that are hashes)
   const anchorIds = useMemo(
     () => navItems.filter((n) => n.href.startsWith("#")).map((n) => n.href.replace("#", "")),
@@ -154,6 +163,9 @@ const Header: React.FC = () => {
   useEffect(() => {
     const onHeaderScrollTo = (ev: Event) => {
       try {
+        // don't perform header-driven scrolling while modal is open
+        if (isClientModalOpen()) return;
+
         const detail = (ev as CustomEvent).detail as string | undefined;
         if (!detail) return;
         const id = detail.replace(/^#/, "");
@@ -223,6 +235,14 @@ const Header: React.FC = () => {
 
   // central click handler for header links
   const handleClick = async (e: React.MouseEvent, href: string) => {
+    // If a client modal is open, block header interactions
+    if (isClientModalOpen()) {
+      e.preventDefault();
+      // optionally you can give a subtle feedback (uncomment if desired)
+      // alert("Close the open case study first.");
+      return;
+    }
+
     const closeMobile = () => setMobileOpen(false);
 
     // route links (e.g. /blog)
@@ -260,7 +280,10 @@ const Header: React.FC = () => {
       // small delay then notify destination page to scroll
       setTimeout(() => {
         try {
-          window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: href }));
+          // Don't dispatch if a modal was opened between the route push and this timeout
+          if (!isClientModalOpen()) {
+            window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: href }));
+          }
         } catch (err) {
           console.warn("[Header] failed to dispatch header-scroll-to event", err);
         }
@@ -283,6 +306,8 @@ const Header: React.FC = () => {
       className="fixed top-0 left-0 w-full bg-[#262626] text-white z-50 shadow-md"
       role="banner"
       aria-label="Main header"
+      // if modal is open, keep header visually available but avoid pointer interaction surprises
+      style={isClientModalOpen() ? { pointerEvents: "auto" } : undefined}
     >
       <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 sm:px-8 py-3">
         <Link href="/" aria-label="Go to homepage" className="flex items-center space-x-2">
@@ -312,7 +337,13 @@ const Header: React.FC = () => {
               if (item.href.startsWith("/")) {
                 return (
                   <li key={item.label}>
-                    <Link href={item.href} onClick={(e) => handleClick(e as any, item.href)} className={linkClass}>
+                    <Link
+                      href={item.href}
+                      onClick={(e) => handleClick(e as any, item.href)}
+                      className={linkClass}
+                      aria-disabled={isClientModalOpen() ? "true" : undefined}
+                      tabIndex={isClientModalOpen() ? -1 : undefined}
+                    >
                       {item.label}
                     </Link>
                   </li>
@@ -322,7 +353,14 @@ const Header: React.FC = () => {
               // anchor links — use plain <a> with onClick
               return (
                 <li key={item.label}>
-                  <a href={item.href} onClick={(e) => handleClick(e, item.href)} className={linkClass} aria-current={active ? "page" : undefined}>
+                  <a
+                    href={item.href}
+                    onClick={(e) => handleClick(e, item.href)}
+                    className={linkClass}
+                    aria-current={active ? "page" : undefined}
+                    aria-disabled={isClientModalOpen() ? "true" : undefined}
+                    tabIndex={isClientModalOpen() ? -1 : undefined}
+                  >
                     {item.label}
                   </a>
                 </li>
@@ -380,7 +418,13 @@ const Header: React.FC = () => {
               if (item.href.startsWith("/")) {
                 return (
                   <div key={item.label}>
-                    <Link href={item.href} onClick={(e) => handleClick(e as any, item.href)} className={linkClass}>
+                    <Link
+                      href={item.href}
+                      onClick={(e) => handleClick(e as any, item.href)}
+                      className={linkClass}
+                      aria-disabled={isClientModalOpen() ? "true" : undefined}
+                      tabIndex={isClientModalOpen() ? -1 : undefined}
+                    >
                       {item.label}
                     </Link>
                   </div>
@@ -389,15 +433,19 @@ const Header: React.FC = () => {
 
               return (
                 <div key={item.label}>
-                  <a href={item.href} onClick={(e) => handleClick(e, item.href)} className={linkClass}>
+                  <a
+                    href={item.href}
+                    onClick={(e) => handleClick(e, item.href)}
+                    className={linkClass}
+                    aria-disabled={isClientModalOpen() ? "true" : undefined}
+                    tabIndex={isClientModalOpen() ? -1 : undefined}
+                  >
                     {item.label}
                   </a>
                 </div>
               );
             })}
           </nav>
-
-          
         </div>
       </div>
     </header>
