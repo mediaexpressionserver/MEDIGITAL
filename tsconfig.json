@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -16,10 +16,9 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    "typeRoots": ["./src/types", "./node_modules/@types"]
+    "paths": { "@/*": ["src/*"] },
+    "typeRoots": ["./src/types", "./node_modules/@types"],
+    "types": []
   },
   "include": [
     "next-env.d.ts",
