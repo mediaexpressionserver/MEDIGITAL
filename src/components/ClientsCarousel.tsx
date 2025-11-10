@@ -168,6 +168,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
           <div className="absolute inset-0 bg-black/60" />
           <div
             className="relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6"
+            style={{ transform: "translateY(-6vh)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
