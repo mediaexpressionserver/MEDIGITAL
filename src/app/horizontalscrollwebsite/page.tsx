@@ -729,22 +729,21 @@ useEffect(() => {
 
   {/* Menu Options */}
   <div className="flex flex-col items-start p-6 translate-y-[120px]">
-    {/* Menu links with inline height */}
-    <a href="#home" className="text-lg font-semibold leading-[50px] landscape:leading-[50px]">
-      Home
-    </a>
-    <a href="#about" className="text-lg font-semibold leading-[50px] landscape:leading-[50px]">
-      About
-    </a>
-    <a href="#services" className="text-lg font-semibold leading-[50px] landscape:leading-[50px]">
-      Services
-    </a>
-    <a href="#portfolio" className="text-lg font-semibold leading-[50px] landscape:leading-[50px]">
-      Portfolio
-    </a>
-    <a href="#contact" className="text-lg font-semibold leading-[50px] landscape:leading-[50px]">
-      Contact
-    </a>
+    {[
+      { label: "ABOUT US", href: "#ourwaydesktop" },
+      { label: "SERVICES", href: "#servicesdesktop" },
+      { label: "PORTFOLIO", href: "#portfoliodesktop" },
+      { label: "BLOG", href: "/blog2" },
+      { label: "REACH US", href: "#reachusdesktop" },
+    ].map((item, index) => (
+      <a
+        key={index}
+        href={item.href}
+        className="text-lg font-semibold leading-[50px] landscape:leading-[50px]"
+      >
+        {item.label}
+      </a>
+    ))}
   </div>
 </div>
 
@@ -789,25 +788,36 @@ useEffect(() => {
   <div className="absolute bottom-[20px] left-0 right-0 h-[80px] bg-[#EEAA45] w-full rounded-b-[3rem] z-`0"></div>
 </div>
 {/* Section 2 - Ideas */}
-<section
+<section id="ourwaydesktop"
     className="relative -mt-24 min-h-screen flex flex-col p-6 bg-cover bg-center bg-no-repeat z-10 landscape:min-h-[130vh] "
   style={{
     backgroundImage: "url('/images/ofcework.png')",
   }}
 >
   <div className="flex-1 flex flex-col justify-end items-start text-left pb-12">
-    <h2 className="text-4xl font-extrabold text-[#EEAA45] leading-tight mb-6">
+  <div className="bg-black/60 backdrop-blur-sm p-6 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] text-white w-full max-w-[100%] mt-[100px]">
+    <h2 className="text-4xl font-extrabold text-[#EEAA45] leading-tight mb-6 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.6)]">
       Ideas That<br />Break<br />Through.
     </h2>
-    <p className="text-sm text-gray-100 mb-6 leading-relaxed max-w-md">
+    <p>
       We dont play it safe—we push ideas further. A team that tries,
       learns, and reinvents until your brand{" "}
       <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
     </p>
-    <button className="w-48 py-3 bg-[#EEAA45] text-white rounded-lg hover:bg-[#EEAA45]">
-      Read more
-    </button>
+    <p className="mt-4">
+      Every idea begins as a spark — small, rough, and full of potential. What we do is nurture that spark into something memorable. We dive into insights, explore new angles, and shape concepts that feel alive. Our process is part intuition, part strategy, and entirely driven by passion.
+    </p>
+    <p className="mt-4">
+      We experiment fearlessly, polishing every thought until it reflects clarity and purpose. We rethink, rework, and reinvent until the message feels effortless. For us, creativity isn’t a moment — it’s a commitment.
+    </p>
+    <p className="mt-4">
+      We build ideas that connect emotionally, communicate intelligently, and stand confidently in a crowded world. Whether it’s a brand story, a campaign, or a single line of copy, we make sure it resonates. We’re here to craft work that feels distinctive, meaningful, and undeniably yours.
+    </p>
+    <p className="mt-4">
+      Because for us, “good enough” is never enough.
+    </p>
   </div>
+</div>
 </section>
 
 
@@ -966,7 +976,7 @@ useEffect(() => {
 
 
 {/* Mobile Section 6 - Portfolio */}
-<section
+<section id = "portfoliodesktop"
   className="min-h-screen flex flex-col justify-center relative bg-cover bg-center bg-no-repeat"
   style={{
     backgroundImage: "url('/images/working-table-with-computer 1.png')",
@@ -1013,7 +1023,7 @@ useEffect(() => {
 `}</style>
 
        {/* Mobile Section 7 - Contact Form nash new 25 */}
-<section
+<section id = "reachusdesktop"
   className="min-h-screen bg-cover bg-center bg-no-repeat flex flex-col justify-center p-6"
   style={{
     backgroundImage: "url('/images/black-wired-phone-black-background 1.png')",
@@ -1522,7 +1532,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
             className="object-cover object-center"
             priority
           />
-          <div className="absolute inset-0 bg-black bg-opacity-60" />
+          <div className="absolute inset-0 bg-black bg-opacity-30" />
 
        
         </div>
