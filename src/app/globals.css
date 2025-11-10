@@ -1,38 +1,22 @@
-/* src/app/globals.css */
-
-/* Tailwind base layers */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* -------------------------------
-   Global Baseline & Font Scaling
---------------------------------*/
-html {
-  font-size: 16px; /* stable baseline - avoid dynamic overwrites */
-  -webkit-text-size-adjust: 100%; /* prevent iOS from auto-resizing text */
-  -moz-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
+/* Reset default margins and paddings */
 html, body, #__next {
   height: 100%;
 }
-
-/* Body defaults */
 body {
   margin: 0; /* remove default body margin that can create whitespace */
-  min-height: 100vh;
-  background-color: #ffffff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* -------------------------------
-   Element & Utility Adjustments
---------------------------------*/
+/* Ensure the body takes full height */
+body {
+  min-height: 100vh;
+  background-color: #ffffff;
+}
 
 /* Smooth transition for section elements */
 section {
@@ -45,12 +29,13 @@ img {
   user-drag: none;
 }
 
-/* Improve rendering performance globally */
+/* Improve rendering performance */
 * {
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
 
 /* Hide horizontal scrollbar */
 .no-scrollbar::-webkit-scrollbar {
@@ -60,13 +45,11 @@ img {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
-/* Hide unwanted black overlay (custom hero fix) */
 .hero-section > .absolute.bg-black\/60 {
   display: none !important;
 }
 
-/* Help browser compositing — use on horizontal scroll containers */
+/* help browser compositing — add to component or global css */
 .horizontal-container,
 .your-horizontal-container {
   -webkit-transform: translateZ(0);
@@ -76,7 +59,7 @@ img {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Utility: force GPU repaint */
+/* e.g. global or module CSS */
 .force-repaint {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);

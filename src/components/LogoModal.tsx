@@ -69,7 +69,7 @@ export default function LogoModal({ open, onClose, item }: Props) {
           </div>
         </div>
 
-        {/* Title & body new nash new*/}
+        {/* Title & body */}
         <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{item.title}</h3>
         <p className="text-sm text-gray-700 leading-relaxed text-center">{item.body}</p>
       </div>

@@ -1,3 +1,4 @@
+// src/components/HeaderScrollListener.tsx
 "use client";
 
 import { useEffect } from "react";
@@ -13,8 +14,6 @@ import { useEffect } from "react";
  *  - window.location.hash on mount
  *  - 'header-scroll-to' CustomEvent (dispatched by Header after router.push)
  *  - hashchange/popstate
- *
- * NOTE: It will politely avoid doing any scrolling while `window.__clientModalOpen` is truthy.
  */
 
 function isScrollable(el: Element | null) {
@@ -34,11 +33,7 @@ function findScrollableAncestor(el: HTMLElement | null) {
     cur = cur.parentElement;
   }
   // fallback: documentElement if it scrolls, otherwise window
-  if (
-    document.documentElement &&
-    (document.documentElement.scrollHeight > document.documentElement.clientHeight ||
-      document.documentElement.scrollWidth > document.documentElement.clientWidth)
-  ) {
+  if (document.documentElement && (document.documentElement.scrollHeight > document.documentElement.clientHeight || document.documentElement.scrollWidth > document.documentElement.clientWidth)) {
     return document.documentElement;
   }
   return null;
@@ -73,7 +68,6 @@ function scrollContainerTo(container: HTMLElement | Document | Window, top: numb
     // older browsers might not support options, fall back:
     try {
       if (container === window || container === document) {
-        // note: args order differs in old API (x,y) but we keep best-effort
         window.scrollTo(left, top);
       } else {
         (container as HTMLElement).scrollTo(left, top);
@@ -84,11 +78,6 @@ function scrollContainerTo(container: HTMLElement | Document | Window, top: numb
   }
 }
 
-/**
- * Attempts to scroll to `id`, with retries for:
- *  - element not yet present in DOM
- *  - a modal open (window.__clientModalOpen) — in which case we retry until it closes or retries exhausted
- */
 function tryScrollToId(id: string, opts?: { offset?: number; retries?: number; horizontal?: boolean }) {
   if (!id) return;
   const offset = opts?.offset ?? 0;
@@ -97,19 +86,6 @@ function tryScrollToId(id: string, opts?: { offset?: number; retries?: number; h
 
   const attempt = () => {
     attempts += 1;
-
-    // If client modal is open, postpone scrolling — try again shortly (up to retries)
-    try {
-      if ((window as any).__clientModalOpen) {
-        if (attempts <= maxRetries) {
-          window.setTimeout(attempt, 150 + attempts * 40);
-        }
-        return;
-      }
-    } catch {
-      // ignore errors reading flag
-    }
-
     const el = document.getElementById(id);
     if (!el) {
       if (attempts <= maxRetries) {
@@ -128,13 +104,23 @@ function tryScrollToId(id: string, opts?: { offset?: number; retries?: number; h
 
     // If ancestor is an HTMLElement, adjust for its current scroll (getElementRectRelativeToContainer did that)
     if (scrollableAncestor instanceof HTMLElement) {
+      // ensure we don't overshoot (clamp)
       const maxTop = scrollableAncestor.scrollHeight - scrollableAncestor.clientHeight;
       const maxLeft = scrollableAncestor.scrollWidth - scrollableAncestor.clientWidth;
       targetTop = Math.min(targetTop, Math.max(0, maxTop));
       targetLeft = Math.min(targetLeft, Math.max(0, maxLeft));
     }
 
-    // Perform the scroll (vertical primary)
+    // If element is mostly to the right in a horizontal layout, prefer horizontal scroll
+    const preferHorizontal =
+  (opts?.horizontal) ??
+  (
+    Math.abs(rect.left - (window.innerWidth / 2)) < 99999 &&
+    (scrollableAncestor instanceof HTMLElement
+      ? scrollableAncestor.scrollWidth > scrollableAncestor.clientWidth
+      : false)
+  );
+    // Decide scroll axis: try vertical then horizontal if required
     scrollContainerTo(scrollableAncestor, targetTop, targetLeft, "smooth");
 
     // accessibility focus (without scrolling)
@@ -156,7 +142,6 @@ export default function HeaderScrollListener() {
     // on mount: if URL has hash, scroll (small delay to let layout settle)
     if (typeof window !== "undefined" && window.location.hash) {
       const id = window.location.hash.replace(/^#/, "");
-      // delegate to tryScrollToId which already respects the modal flag
       setTimeout(() => tryScrollToId(id, { offset: DEFAULT_OFFSET, retries: 10 }), 120);
     }
 
@@ -165,7 +150,6 @@ export default function HeaderScrollListener() {
         const detail = (ev as CustomEvent).detail;
         if (!detail || typeof detail !== "string") return;
         const id = detail.replace(/^#/, "");
-        // run after small delay so layout can settle in destination page
         setTimeout(() => tryScrollToId(id, { offset: DEFAULT_OFFSET, retries: 10 }), 120);
       } catch {
         // ignore

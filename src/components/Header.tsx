@@ -32,21 +32,6 @@ const Header: React.FC = () => {
 
   const [searchString, setSearchString] = useState<string>("");
 
-  // IMPORTANT: track mount to avoid SSR/CSR mismatch for active-link styling
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // helper to read the global modal flag set by ClientsCarousel
-  const isClientModalOpen = () => {
-    try {
-      return typeof window !== "undefined" && !!(window as any).__clientModalOpen;
-    } catch {
-      return false;
-    }
-  };
-
   // anchor ids (from navItems that are hashes)
   const anchorIds = useMemo(
     () => navItems.filter((n) => n.href.startsWith("#")).map((n) => n.href.replace("#", "")),
@@ -86,19 +71,15 @@ const Header: React.FC = () => {
         setMobileOpen(false);
       }
     };
-    if (typeof window !== "undefined") {
-      window.addEventListener("keydown", onKey);
-      window.addEventListener("click", onClickOutside);
-    }
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("click", onClickOutside);
     return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("keydown", onKey);
-        window.removeEventListener("click", onClickOutside);
-      }
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("click", onClickOutside);
     };
   }, [mobileOpen]);
 
-  // scroll-spy: observe anchor sections on the homepage (client-only)
+  // scroll-spy: observe anchor sections on the homepage
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -163,9 +144,6 @@ const Header: React.FC = () => {
   useEffect(() => {
     const onHeaderScrollTo = (ev: Event) => {
       try {
-        // don't perform header-driven scrolling while modal is open
-        if (isClientModalOpen()) return;
-
         const detail = (ev as CustomEvent).detail as string | undefined;
         if (!detail) return;
         const id = detail.replace(/^#/, "");
@@ -175,34 +153,30 @@ const Header: React.FC = () => {
         // ignore
       }
     };
-    if (typeof window !== "undefined") {
-      window.addEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
-      }
-    };
+    window.addEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
+    return () => window.removeEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
   }, []);
 
-  // hide header on certain routes / search substrings (server-safe)
+  // hide header on certain routes / search / hash substrings (existing rule)
   const hideSubstrings = ["horizontalscroll", "horizontal-scroll", "horizontal"];
   const pathnameLower = (pathname || "").toLowerCase();
   const searchStringLower = (searchString || "").toLowerCase();
+  const hash = typeof window !== "undefined" ? window.location.hash.toLowerCase() : "";
   const queryParams = typeof window !== "undefined" ? new URLSearchParams(searchString) : new URLSearchParams();
   const hideHeaderFlag = queryParams.get("hideHeader");
   const shouldHideHeader =
     hideSubstrings.some((s) => pathnameLower.includes(s)) ||
     hideSubstrings.some((s) => searchStringLower.includes(s)) ||
+    hideSubstrings.some((s) => hash.includes(s)) ||
     hideHeaderFlag === "1" ||
     hideHeaderFlag === "true";
 
-  // NOTE: we intentionally do NOT read window.location.hash during render because that causes SSR/CSR mismatch.
   if (shouldHideHeader) {
     if (process.env.NODE_ENV === "development") {
-      console.debug("[Header] hidden because route/search matched hide rules:", {
+      console.debug("[Header] hidden because route/search/hash matched hide rules:", {
         pathname,
         search: searchString,
+        hash,
       });
     }
     return null;
@@ -235,14 +209,6 @@ const Header: React.FC = () => {
 
   // central click handler for header links
   const handleClick = async (e: React.MouseEvent, href: string) => {
-    // If a client modal is open, block header interactions
-    if (isClientModalOpen()) {
-      e.preventDefault();
-      // optionally you can give a subtle feedback (uncomment if desired)
-      // alert("Close the open case study first.");
-      return;
-    }
-
     const closeMobile = () => setMobileOpen(false);
 
     // route links (e.g. /blog)
@@ -257,58 +223,30 @@ const Header: React.FC = () => {
       return;
     }
 
-    // ---------- UPDATED: anchor/hash handling with sessionStorage handshake ----------
+    // anchor/hash links
     if (href.startsWith("#")) {
       e.preventDefault();
       closeMobile();
 
       const targetRoute = anchorRouteMap[href] ?? "/";
 
-      // If already on the route, prefer immediate dispatch / smooth scroll
+      // if already on the target route, scroll immediately
       if (pathname === targetRoute) {
-        // Special-case horizontal page: let the page handle mapping precisely
-        if (targetRoute === "/horizontalscrollwebsite") {
-          try {
-            // dispatch immediately so the horizontal page's handler gets the event
-            window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: href }));
-          } catch (err) {
-            // fallback to DOM smooth scroll (won't map horizontal X->Y but is a fallback)
-            smoothScrollTo(href);
-          }
-          return;
-        }
-
-        // Normal vertical pages -> native smooth scroll
         smoothScrollTo(href);
         return;
       }
 
-      // Not on the target route: store the desired hash BEFORE navigation, then navigate.
-      // Destination page will either read sessionStorage or listen for header-scroll-to.
-      try {
-        if (typeof window !== "undefined") {
-          try {
-            sessionStorage.setItem("hsw_nav_target", href);
-          } catch (err) {
-            // ignore storage failures
-          }
-        }
-      } catch {}
-
+      // otherwise navigate to the route, then dispatch an event to scroll when ready
       try {
         await router.push(targetRoute);
       } catch (err) {
         console.warn("[Header] router.push failed for anchor navigation:", err);
       }
 
-      // After navigation completes, dispatch the event so destination can act quickly.
-      // Also give the page a tiny moment to mount/layout.
+      // small delay then notify destination page to scroll
       setTimeout(() => {
         try {
-          // don't dispatch if a client modal opened in the meantime
-          if (!isClientModalOpen() && typeof window !== "undefined") {
-            window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: href }));
-          }
+          window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: href }));
         } catch (err) {
           console.warn("[Header] failed to dispatch header-scroll-to event", err);
         }
@@ -331,8 +269,6 @@ const Header: React.FC = () => {
       className="fixed top-0 left-0 w-full bg-[#262626] text-white z-50 shadow-md"
       role="banner"
       aria-label="Main header"
-      // if modal is open, keep header visually available but avoid pointer interaction surprises
-      style={isClientModalOpen() ? { pointerEvents: "auto" } : undefined}
     >
       <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 sm:px-8 py-3">
         <Link href="/" aria-label="Go to homepage" className="flex items-center space-x-2">
@@ -344,13 +280,10 @@ const Header: React.FC = () => {
         <nav role="navigation" aria-label="Primary navigation" className="hidden md:block">
           <ul className="flex items-center space-x-6">
             {navItems.map((item) => {
-              // only compute "active" after client mount to prevent SSR/CSR mismatch
-              const active = isClient
-                ? item.href.startsWith("/")
-                  ? isRouteActive(item.href)
-                  : item.href.startsWith("#")
-                  ? activeHash === item.href
-                  : false
+              const active = item.href.startsWith("/")
+                ? isRouteActive(item.href)
+                : item.href.startsWith("#")
+                ? activeHash === item.href
                 : false;
 
               const baseClass = "text-sm font-medium tracking-wide transition-colors";
@@ -362,13 +295,7 @@ const Header: React.FC = () => {
               if (item.href.startsWith("/")) {
                 return (
                   <li key={item.label}>
-                    <Link
-                      href={item.href}
-                      onClick={(e) => handleClick(e as any, item.href)}
-                      className={linkClass}
-                      aria-disabled={isClientModalOpen() ? "true" : undefined}
-                      tabIndex={isClientModalOpen() ? -1 : undefined}
-                    >
+                    <Link href={item.href} onClick={(e) => handleClick(e as any, item.href)} className={linkClass}>
                       {item.label}
                     </Link>
                   </li>
@@ -378,14 +305,7 @@ const Header: React.FC = () => {
               // anchor links — use plain <a> with onClick
               return (
                 <li key={item.label}>
-                  <a
-                    href={item.href}
-                    onClick={(e) => handleClick(e, item.href)}
-                    className={linkClass}
-                    aria-current={active ? "page" : undefined}
-                    aria-disabled={isClientModalOpen() ? "true" : undefined}
-                    tabIndex={isClientModalOpen() ? -1 : undefined}
-                  >
+                  <a href={item.href} onClick={(e) => handleClick(e, item.href)} className={linkClass} aria-current={active ? "page" : undefined}>
                     {item.label}
                   </a>
                 </li>
@@ -395,9 +315,21 @@ const Header: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-3">
-          {/* Desktop Contact button - use the same anchor->route mapping as header so we navigate to the correct page first */}
-          
-          {/* Mobile toggle button (unchanged behaviour) */}
+          <button
+            className="hidden md:inline-flex bg-[#E29A4D] hover:bg-[#ffae54] text-black font-semibold text-xs px-4 py-2 rounded-md transition-all duration-300"
+            onClick={() => {
+              if (pathname === "/") {
+                smoothScrollTo("#reachusdesktop");
+              } else {
+                router.push("/#reachusdesktop");
+                setTimeout(() => smoothScrollTo("#reachusdesktop"), SCROLL_DELAY_AFTER_NAV_MS);
+              }
+            }}
+            aria-label="Contact us"
+          >
+            Contact Us
+          </button>
+
           <button
             ref={toggleButtonRef}
             className="inline-flex items-center justify-center p-2 rounded-md md:hidden text-gray-200 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-400"
@@ -427,12 +359,10 @@ const Header: React.FC = () => {
         <div className="px-4 py-4 space-y-3">
           <nav aria-label="Mobile primary" className="space-y-1">
             {navItems.map((item) => {
-              const active = isClient
-                ? item.href.startsWith("/")
-                  ? isRouteActive(item.href)
-                  : item.href.startsWith("#")
-                  ? activeHash === item.href
-                  : false
+              const active = item.href.startsWith("/")
+                ? isRouteActive(item.href)
+                : item.href.startsWith("#")
+                ? activeHash === item.href
                 : false;
 
               const baseClass = "block px-3 py-2 rounded text-base font-medium transition-colors";
@@ -443,13 +373,7 @@ const Header: React.FC = () => {
               if (item.href.startsWith("/")) {
                 return (
                   <div key={item.label}>
-                    <Link
-                      href={item.href}
-                      onClick={(e) => handleClick(e as any, item.href)}
-                      className={linkClass}
-                      aria-disabled={isClientModalOpen() ? "true" : undefined}
-                      tabIndex={isClientModalOpen() ? -1 : undefined}
-                    >
+                    <Link href={item.href} onClick={(e) => handleClick(e as any, item.href)} className={linkClass}>
                       {item.label}
                     </Link>
                   </div>
@@ -458,19 +382,30 @@ const Header: React.FC = () => {
 
               return (
                 <div key={item.label}>
-                  <a
-                    href={item.href}
-                    onClick={(e) => handleClick(e, item.href)}
-                    className={linkClass}
-                    aria-disabled={isClientModalOpen() ? "true" : undefined}
-                    tabIndex={isClientModalOpen() ? -1 : undefined}
-                  >
+                  <a href={item.href} onClick={(e) => handleClick(e, item.href)} className={linkClass}>
                     {item.label}
                   </a>
                 </div>
               );
             })}
           </nav>
+
+          <div className="pt-2">
+            <button
+              className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-[#E29A4D] text-black font-semibold rounded-md hover:bg-[#ffae54] transition"
+              onClick={() => {
+                setMobileOpen(false);
+                if (pathname === "/") {
+                  smoothScrollTo("#reachusdesktop");
+                } else {
+                  router.push("/#reachusdesktop");
+                  setTimeout(() => smoothScrollTo("#reachusdesktop"), SCROLL_DELAY_AFTER_NAV_MS);
+                }
+              }}
+            >
+              Contact Us
+            </button>
+          </div>
         </div>
       </div>
     </header>
