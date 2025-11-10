@@ -1,17 +1,18 @@
 // src/app/blog/[slug]/page.tsx
-// Server component (no "use client") — exports metadata and reads data server-side.
+// Server component — optimized for smooth scrolling and rendering
 
 import Image from "next/image";
 import Header from "@/components/Header";
 import { readClientsData } from "@/lib/data";
 import BackButtonClient from "./BackButtonClient"; // if present
-import MediaGallery from "@/components/MediaGallery"; // client component
+import MediaGallery from "@/components/MediaGallery";
+import ScrollAfterBack from "./ScrollAfterBack"; // client component for scroll behavior
 
 export const metadata = {
-  title: "Blog",
+  title: "Blog2",
 };
 
-export default async function BlogDetailPage({
+export default async function Blog2DetailPage({
   params,
 }: {
   params: { slug: string } | Promise<{ slug: string }>;
@@ -28,7 +29,7 @@ export default async function BlogDetailPage({
 
   if (!client) {
     return (
-      <main className="min-h-screen">
+      <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Header />
         <div className="max-w-screen-md mx-auto p-8 text-center">
           <h1 className="text-2xl font-semibold">Not found</h1>
@@ -41,7 +42,6 @@ export default async function BlogDetailPage({
   const title = client.blog_title ?? client.blogTitle ?? "Untitled";
   const bodyHtml = client.blog_body_html ?? client.blogBodyHtml ?? "";
 
-  // normalize images
   const images: string[] =
     Array.isArray(client.images) && client.images.length > 0
       ? client.images
@@ -56,34 +56,50 @@ export default async function BlogDetailPage({
     client.blogFeatureImageUrl ??
     (images && images.length > 0 ? images[0] : null);
 
-  // normalize videos — Postgres text[] should already be array; handle stringified JSON as fallback
-  const videosRaw = client.videos ?? client.video_urls ?? client.videoUrls ?? client.videos_list ?? [];
+  // normalize videos
+  const videosRaw =
+    client.videos ?? client.video_urls ?? client.videoUrls ?? client.videos_list ?? [];
   const videos: string[] = Array.isArray(videosRaw)
     ? videosRaw
     : (typeof videosRaw === "string" && videosRaw ? JSON.parse(videosRaw) : []);
 
-  // Build unified media list
   const media = [
     ...(images || []).map((src: string) => ({ type: "image" as const, src, alt: title })),
     ...(videos || []).map((src: string) => ({ type: "video" as const, src, alt: title })),
   ];
 
   return (
-    <main
-      className="relative min-h-screen w-full bg-fixed bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url('/images/Blogpagebg.png')" }}
-    >
-      <div className="absolute inset-0 bg-black/40" />
+    <main className="relative min-h-screen w-full overflow-x-hidden">
+      {/* Optimized background */}
+      <div className="absolute inset-0 -z-10">
+        <Image
+          src="/images/Blogpagebg.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover" }}
+        />
+        <div className="absolute inset-0 bg-black/40" />
+      </div>
+
       <div className="relative z-10 max-w-screen-xl mx-auto px-6 py-16">
-        {/* optional BackButtonClient */}
         {typeof BackButtonClient === "function" ? <BackButtonClient /> : null}
+        <ScrollAfterBack />
 
         <Header />
 
-        <article className="bg-white rounded-lg shadow overflow-hidden">
+        <article className="bg-white rounded-lg overflow-hidden">
           {feature ? (
-            <div className="relative w-full h-64">
-              <Image src={feature} alt={title} fill style={{ objectFit: "cover" }} />
+            <div className="relative w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
+              {/* Preserve image aspect ratio with whitespace; use `object-contain` */}
+              <Image
+                src={feature}
+                alt={title}
+                fill
+                style={{ objectFit: "contain" }}
+                loading="lazy"
+              />
             </div>
           ) : (
             <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">
@@ -101,12 +117,18 @@ export default async function BlogDetailPage({
               </section>
             )}
 
-            <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+            <div
+              className="prose max-w-none"
+              dangerouslySetInnerHTML={{ __html: bodyHtml }}
+            />
 
             {client.blog_slug && (
               <div className="mt-6">
-                <a href={`/blog/${client.blog_slug}`} className="inline-block bg-orange-500 text-white px-4 py-2 rounded">
-                  Read full blog
+                <a
+                  href={`/blog/${client.blog_slug}`}
+                  className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition"
+                >
+                  Read full case study
                 </a>
               </div>
             )}

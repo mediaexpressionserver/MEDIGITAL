@@ -7,27 +7,28 @@ const TABLE = "clients";
 
 function parseArrayField(raw: any): any[] | undefined {
   if (raw === undefined) return undefined;
+  if (Array.isArray(raw)) return raw;
   if (raw === null) return [];
-  if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
   if (typeof raw === "string") {
     const s = raw.trim();
     if (s === "") return [];
+    // try JSON parse first
     try {
       const parsed = JSON.parse(s);
-      if (Array.isArray(parsed)) return parsed.filter(Boolean).map(String);
+      if (Array.isArray(parsed)) return parsed;
     } catch {
-      // not JSON — fall back to comma-split
+      // not JSON — fall back to comma-separated
       return s.split(",").map((x) => x.trim()).filter(Boolean);
     }
   }
+  // if object with values, flatten common shapes
   if (typeof raw === "object") {
     try {
-      // try common keys first
-      if (Array.isArray((raw as any).urls)) return (raw as any).urls.filter(Boolean).map(String);
-      if (Array.isArray((raw as any).files)) return (raw as any).files.filter(Boolean).map(String);
-      return Object.values(raw).flat().filter(Boolean).map(String);
-    } catch {}
-    return [];
+      return Object.values(raw).flat().filter(Boolean);
+    } catch {
+      // final fallback
+      return [];
+    }
   }
   return [];
 }
@@ -50,31 +51,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (payload.blog_feature_image ?? payload.blogFeatureImage) update.blog_feature_image = payload.blog_feature_image ?? payload.blogFeatureImage;
     if (payload.body_data !== undefined) update.body_data = payload.body_data;
 
-    // images (allow string/array/null)
+    // images (array/string)
     if (payload.images !== undefined) {
       const parsed = parseArrayField(payload.images);
       update.images = Array.isArray(parsed) ? parsed : [];
     }
 
-    // videos (allow string/array/null) — explicit empty array will clear DB column
+    // videos (array/string) — allow empty array to clear videos
     if (payload.videos !== undefined) {
       const parsed = parseArrayField(payload.videos);
       update.videos = Array.isArray(parsed) ? parsed : [];
-    }
-
-    // --- blog2 fields ---
-    if (payload.blog2_title ?? payload.blog2Title) update.blog2_title = payload.blog2_title ?? payload.blog2Title;
-    if (payload.blog2_slug ?? payload.blog2Slug) update.blog2_slug = payload.blog2_slug ?? payload.blog2Slug;
-    if (payload.blog2_body_html ?? payload.blog2BodyHtml) update.blog2_body_html = payload.blog2_body_html ?? payload.blog2BodyHtml;
-    if (payload.blog2_feature_image ?? payload.blog2FeatureImage) update.blog2_feature_image = payload.blog2_feature_image ?? payload.blog2FeatureImage;
-
-    if (payload.blog2_images !== undefined) {
-      const parsed = parseArrayField(payload.blog2_images);
-      update.blog2_images = Array.isArray(parsed) ? parsed : [];
-    }
-    if (payload.blog2_videos !== undefined) {
-      const parsed = parseArrayField(payload.blog2_videos);
-      update.blog2_videos = Array.isArray(parsed) ? parsed : [];
     }
 
     if (Object.keys(update).length === 0) {

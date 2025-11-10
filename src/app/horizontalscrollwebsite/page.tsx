@@ -9,6 +9,7 @@ import Link from "next/link";
 import ClientsCarousel from "@/components/ClientsCarousel";
 import HeaderScrollListener from "@/components/HeaderScrollListener";
 import useForceRepaintOnNav from "@/hooks/useForceRepaintOnNav";
+import { StaticImport } from "next/dist/shared/lib/get-img-props";
 
 const services: ServiceItem[] = [
   { label: "Social Media Marketing", iconSrc: "/images/Socialmediamarketting.png" },
@@ -32,9 +33,13 @@ export default function HorizontalScrollWebsite() {
   const [viewportWidth, setViewportWidth] = useState<number>(0);
   const [viewportHeight, setViewportHeight] = useState<number>(0);
   const [isMobile, setIsMobile] = useState<boolean>(false);
+  const [showFullText, setShowFullText] = useState(false);
 
 
-useForceRepaintOnNav(containerRef);
+//useForceRepaintOnNav(containerRef);
+
+  // inside your component render (replace the existing image block)
+
 
   // ---------- hooks & tiny handlers (paste here, only once) ----------
   const [modalOpen, setModalOpen] = useState(false);
@@ -56,13 +61,29 @@ useForceRepaintOnNav(containerRef);
   const scrollLogosRight = () => {
     if (!logoScrollRef.current) return;
     logoScrollRef.current.scrollBy({ left: 240, behavior: "smooth" });
+
+
   };
+
+  const imageSrc = (activeLogo as any)?.logo || (activeLogo as any)?.logoUrl || (activeLogo as any)?.image;
+
+{imageSrc ? (
+  <div className="relative w-32 sm:w-40 md:w-48 h-16 sm:h-20 md:h-24 mx-auto">
+    <Image
+      src={imageSrc as string | StaticImport} // cast is safe because we checked existence
+      alt={`${(activeLogo as any)?.clientName ?? (activeLogo as any)?.title ?? "client"} logo`}
+      fill
+      style={{ objectFit: "contain" }}
+      unoptimized
+    />
+  </div>
+) : null}
   // --------------------------------------------------------------------
 
   // REPLACE current handleNavClick with this improved version (keeps your mapping logic)
   const handleNavClick = (e: React.MouseEvent, href: string) => {
     // allow /blog (or other full routes) to behave normally
-    if (href === "/blog") return;
+    if (href === "/blog2") return;
 
     // only handle hash anchors here
     if (!href.startsWith("#")) {
@@ -1189,16 +1210,16 @@ return (
     { label: "ABOUT US", href: "#ourwaydesktop" },
     { label: "SERVICES", href: "#servicesdesktop" },
     { label: "PORTFOLIO", href: "#portfoliodesktop" },
-    { label: "BLOG", href: "/blog" },
+    { label: "BLOG", href: "/blog2" },
     { label: "REACH US", href: "#reachusdesktop" },
   ].map((item) => (
     <li
       key={item.href} // USE a stable unique key (href is unique here)
       className="text-gray-200 font-medium text-[9px] hover:text-[#EEAA45] transition-colors duration-300"
     >
-      {item.href === "/blog" ? (
+      {item.href === "/blog2" ? (
         // New Link API — no legacyBehavior; pass className directly to Link
-        <Link href="/blog" className="inline-block transform -rotate-90 whitespace-nowrap cursor-pointer hover:text-[#EEAA45] transition-colors duration-300 px-1">
+        <Link href="/blog2" className="inline-block transform -rotate-90 whitespace-nowrap cursor-pointer hover:text-[#EEAA45] transition-colors duration-300 px-1">
           {item.label}
         </Link>
       ) : (
@@ -1273,20 +1294,34 @@ return (
 
         {/* Section 2 - Ideas */}
         <section id="ourwaydesktop" data-horizontal-section className="w-screen h-screen flex relative">
-          <div className="flex-1 flex flex-col justify-center px-10 bg-white relative z-10 translate-x-[100px]">
-            <h2 className="text-7xl font-extrabold text-[#EEAA45] leading-tight">
-              Ideas That <br /> Break <br /> Through.
+          <div
+            className="flex-1 flex flex-col justify-center px-10 relative z-10 max-h-[80vh]"
+            style={{ transform: "translateX(calc(clamp(24px, 4vw, 100px) + 50px)) translateY(calc(clamp(18px, 6vh, 100px) + 40px))" }}
+          >
+            <h2 className="text-5xl font-extrabold text-[#EEAA45]">
+              Ideas That Break Through.
             </h2>
-            <p className="mt-4 text-[18px] text-gray-600 max-w-[400px]">
-              We dont play it safe—we push ideas further. A team that tries,
-              learns, and reinvents until your brand{" "}
-              <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
-            </p>
-            <button className="mt-6 w-[200px] py-2 bg-[#EEAA45] text-white rounded-lg hover:bg-[#EEAA45]">
-              Read more
-            </button>
+            <div className="mt-4 text-[15px] text-gray-600 w-full">
+              <div className="pr-4 max-w-[600px]">
+                <p>
+                  We dont play it safe—we push ideas further. A team that tries,
+                  learns, and reinvents until your brand <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
+                </p>
+                <p className="mt-4">
+                  Every idea begins as a spark — small, rough, and full of potential. What we do is nurture that spark into something memorable. We dive into insights, explore new angles, and shape concepts that feel alive. Our process is part intuition, part strategy, and entirely driven by passion.
+                </p>
+                <p className="mt-4">
+                  We experiment fearlessly, polishing every thought until it reflects clarity and purpose. We rethink, rework, and reinvent until the message feels effortless. For us, creativity isn’t a moment — it’s a commitment.
+                </p>
+                <p className="mt-4">
+                  We build ideas that connect emotionally, communicate intelligently, and stand confidently in a crowded world. Whether it’s a brand story, a campaign, or a single line of copy, we make sure it resonates. We’re here to craft work that feels distinctive, meaningful, and undeniably yours.
+                </p>
+                <p className="mt-4">
+                  Because for us, “good enough” is never enough.
+                </p>
+              </div>
+            </div>
           </div>
-
           <div className="flex-1 relative overflow-hidden">
             <Image
               src="/images/ofcework.png"
@@ -1489,25 +1524,12 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
           />
           <div className="absolute inset-0 bg-black bg-opacity-60" />
 
-          {/* Text inside image */}
-          <div className="absolute inset-0 flex flex-col justify-center px-10 text-white translate-y-[100px]">
-            <div className="max-w-md">
-             
-              <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Connect & Collaborate</h3>
-              <p className="text-sm text-gray-200 mb-8">
-                We begin by immersing ourselves in your brand&apos;s universe. Our international client base feeds on trust, partnerships, and solid referrals.
-              </p>
-              <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Make It Happen</h3>
-              <p className="text-sm text-gray-200">
-                Concepts are only as good as their implementation. Our teams execute with precision and creativity to deliver impactful results.
-              </p>
-            </div>
-          </div>
+       
         </div>
 
         {/* Right: Text side */}
         
-        <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[300px] translate-y-[-250px]">
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[400px] translate-y-[-150px]">
           <div className="mb-10">
             <h2 className="text-[220px] font-extrabold text-[#EEAA45] leading-tight translate-x-[-160px] translate-y-[230px]">4</h2>
             <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold text-[#EEAA45] leading-tight">Daring<br />Steps.</h2>
@@ -1516,21 +1538,37 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl translate-y-[50px] translate-x-[-100px]">
-            <div>
-              <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Define Your Vision</h3>
-              <p className="text-sm text-gray-600">
-                Brilliant campaigns begin with clear objectives. We reveal your brand’s purpose and build a roadmap that connects strategy to results.
-              </p>
-            </div>
-            <div className="translate-x-[50px]">
-              <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Develop a Winning Strategy</h3>
-              <p className="text-sm text-gray-600">
-                Our specialists craft distinctive, results-driven strategies tailored to your brand and audience.
-              </p>
+          <div className="max-w-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-start" style={{ transform: 'translateX(-135px)' }}>
+                <div className="text-left" style={{ transform: 'translateX(-55px)' }}>
+                  <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Connect &amp; Collaborate</h3>
+                  <p className="text-sm text-gray-700">
+                    We begin by immersing ourselves in your brand&apos;s universe. Our international client base feeds on trust, partnerships, and solid referrals.
+                  </p>
+                </div>
+
+                <div className="text-left">
+                  <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Make It Happen</h3>
+                  <p className="text-sm text-gray-700">
+                    Concepts are only as good as their implementation. Our teams execute with precision and creativity to deliver impactful results.
+                  </p>
+                </div>
+              </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl" style={{ transform: "translateX(clamp(-260px, -10vw, -190px)) translateY(clamp(18px, 6vh, 50px))" }}>
+              <div>
+                <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Define Your Vision</h3>
+                <p className="text-sm text-gray-600">
+                  Brilliant campaigns begin with clear objectives. We reveal your brand’s purpose and build a roadmap that connects strategy to results.
+                </p>
+              </div>
+              <div style={{ transform: "translateX(clamp(12px, 3vw, 50px))" }}>
+                <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Develop a Winning Strategy</h3>
+                <p className="text-sm text-gray-600">
+                  Our specialists craft distinctive, results-driven strategies tailored to your brand and audience.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
       </section>
 
 {/* Section 6 - Portfolio */}
@@ -1601,12 +1639,19 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
 
       <div className="flex justify-center mb-4">
         <div className="relative w-48 h-20">
-          <Image
-            src={activeLogo.src}
-            alt={activeLogo.title}
-            fill
-            style={{ objectFit: "contain" }}
-          />
+          {activeLogo?.src ? (
+            <Image
+              src={activeLogo.src as string | StaticImport}
+              alt={activeLogo.title || "client logo"}
+              fill
+              style={{ objectFit: "contain" }}
+              unoptimized
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">
+              No image available
+            </div>
+          )}
         </div>
       </div>
 

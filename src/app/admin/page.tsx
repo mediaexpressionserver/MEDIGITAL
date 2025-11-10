@@ -19,7 +19,16 @@ type Client = {
   created_at?: string;
   images?: string[];
   videos?: string[];
+  // blog2 fields
+  blog2_title?: string;
+  blog2_slug?: string;
+  blog2_body_html?: string;
+  blog2_feature_image?: string;
+  blog2_images?: string[];
+  blog2_videos?: string[];
   body_data?: any;
+  // source indicates which backend/table this row came from
+  source?: "clients" | "clients_blog2";
 };
 
 /* ---------- component ---------- */
@@ -29,35 +38,50 @@ export default function AdminPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [editing, setEditing] = useState<Client | null>(null);
 
-  // form fields
-  const [clientName, setClientName] = useState("");
-  const [blogTitle, setBlogTitle] = useState("");
-  const [blogBody, setBlogBody] = useState(""); // HTML
-  const [ctaText, setCtaText] = useState("Read full blog");
+  /* ----- Blog1 create states ----- */
+  const [clientName1, setClientName1] = useState("");
+  const [blogTitle1, setBlogTitle1] = useState("");
+  const [blogBody1, setBlogBody1] = useState(""); // HTML
+  const [ctaText1, setCtaText1] = useState("Read full blog");
 
-  // files + previews (images)
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef1 = useRef<HTMLInputElement | null>(null);
+  const videoInputRef1 = useRef<HTMLInputElement | null>(null);
 
-  // videos + previews
-  const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
-  const [videoPreviews, setVideoPreviews] = useState<string[]>([]);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedFiles1, setSelectedFiles1] = useState<File[]>([]);
+  const [previews1, setPreviews1] = useState<string[]>([]);
+  const [selectedVideos1, setSelectedVideos1] = useState<File[]>([]);
+  const [videoPreviews1, setVideoPreviews1] = useState<string[]>([]);
+  const [logoUrl1, setLogoUrl1] = useState("");
+  const [featureImageUrl1, setFeatureImageUrl1] = useState("");
+  const [uploadingLogo1, setUploadingLogo1] = useState(false);
+  const [uploadingFeature1, setUploadingFeature1] = useState(false);
 
-  // logos / feature images
-  const [logoUrl, setLogoUrl] = useState("");
-  const [featureImageUrl, setFeatureImageUrl] = useState("");
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [uploadingFeature, setUploadingFeature] = useState(false);
+  /* ----- Blog2 create states (completely separate) ----- */
+  const [clientName2, setClientName2] = useState("");
+  const [blogTitle2, setBlogTitle2] = useState("");
+  const [blogBody2, setBlogBody2] = useState(""); // HTML for blog2
+
+  const fileInputRef2 = useRef<HTMLInputElement | null>(null);
+  const videoInputRef2 = useRef<HTMLInputElement | null>(null);
+
+  const [selectedFiles2, setSelectedFiles2] = useState<File[]>([]);
+  const [previews2, setPreviews2] = useState<string[]>([]);
+  const [selectedVideos2, setSelectedVideos2] = useState<File[]>([]);
+  const [videoPreviews2, setVideoPreviews2] = useState<string[]>([]);
+  const [logoUrl2, setLogoUrl2] = useState("");
+  const [featureImageUrl2, setFeatureImageUrl2] = useState("");
+  const [uploadingLogo2, setUploadingLogo2] = useState(false);
+  const [uploadingFeature2, setUploadingFeature2] = useState(false);
+
+  /* ----- editing helpers ----- */
   const [editingLogoUploading, setEditingLogoUploading] = useState(false);
   const [editingFeatureUploading, setEditingFeatureUploading] = useState(false);
+  const [editingVideoUploading, setEditingVideoUploading] = useState(false);
   const [editingLogoPreview, setEditingLogoPreview] = useState<string | null>(null);
   const [editingFeaturePreview, setEditingFeaturePreview] = useState<string | null>(null);
-
-  // editing videos upload state + previews
-  const [editingVideoUploading, setEditingVideoUploading] = useState(false);
   const [editingVideoPreview, setEditingVideoPreview] = useState<string | null>(null);
+  const [editingBlog2FeatureUploading, setEditingBlog2FeatureUploading] = useState(false);
+  const [editingBlog2FeaturePreview, setEditingBlog2FeaturePreview] = useState<string | null>(null);
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
@@ -65,19 +89,23 @@ export default function AdminPage() {
     fetchList();
 
     return () => {
-      previews.forEach((p) => {
+      // revoke object URLs for all previews
+      [...previews1, ...previews2].forEach((p) => {
         try {
           URL.revokeObjectURL(p);
         } catch {}
       });
-      videoPreviews.forEach((p) => {
+      [...videoPreviews1, ...videoPreviews2].forEach((p) => {
         try {
-          URL.revokeObjectURL(p);
+          // revoke only blob: URLs (server URLs shouldn't be revoked)
+          if (p && p.startsWith("blob:")) URL.revokeObjectURL(p);
         } catch {}
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* ------------------ API helpers ------------------ */
 
   async function fetchList() {
     setLoading(true);
@@ -94,36 +122,22 @@ export default function AdminPage() {
 
     for (const endpoint of candidates) {
       try {
-        console.group(`[admin fetchList] trying ${endpoint}`);
         const res = await fetch(endpoint, {
           method: "GET",
           credentials: "same-origin",
           headers: { Accept: "application/json" },
           cache: "no-store",
         });
-        const statusLine = `${res.status} ${res.statusText}`;
         const text = await res.text().catch(() => "");
-        const preview = text ? text.slice(0, 1200) : "<empty>";
-
-        console.debug("[admin fetchList] endpoint:", endpoint, "status:", statusLine);
-        console.debug("[admin fetchList] raw response preview:", preview);
-
-        setStatus(`Tried ${endpoint} → ${statusLine}. Preview: ${preview.slice(0, 300)}${preview.length > 300 ? "…" : ""}`);
-
         if (!res.ok) {
-          console.warn("[admin fetchList] non-OK response; trying next endpoint", { endpoint, statusLine });
-          lastDebug = { endpoint, statusLine, preview };
-          console.groupEnd();
+          lastDebug = { endpoint, status: res.status, preview: text?.slice(0, 500) ?? "" };
           continue;
         }
-
         let data: any = null;
         try {
           data = text ? JSON.parse(text) : null;
-        } catch (parseErr) {
-          console.warn("[admin fetchList] JSON parse failed for", endpoint, parseErr);
-          lastDebug = { endpoint, statusLine, preview, parseErr };
-          console.groupEnd();
+        } catch {
+          lastDebug = { endpoint, parseError: true, preview: text?.slice(0, 500) ?? "" };
           continue;
         }
 
@@ -131,11 +145,7 @@ export default function AdminPage() {
         if (Array.isArray(data)) raw = data;
         else if (Array.isArray(data.clients)) raw = data.clients;
         else if (Array.isArray(data.data)) raw = data.data;
-        else if (Array.isArray(data.entries)) raw = data.entries;
         else if (data && typeof data === "object" && Object.keys(data).length > 0) raw = [data];
-        else raw = [];
-
-        console.debug("[admin fetchList] parsed raw length:", raw.length);
 
         const normalized = raw.map((item: any, idx: number) => ({
           id: String(item.id ?? item._id ?? item.client_id ?? item.clientId ?? item.slug ?? item.blog_slug ?? `tmp-${idx}`),
@@ -148,31 +158,68 @@ export default function AdminPage() {
           cta_text: item.cta_text ?? item.ctaText ?? "Read full blog",
           images: item.images ?? item.imageUrls ?? undefined,
           videos: item.videos ?? item.videoUrls ?? item.videos_urls ?? undefined,
+          blog2_title: item.blog2_title ?? item.blog2Title ?? undefined,
+          blog2_slug: item.blog2_slug ?? item.blog2Slug ?? undefined,
+          blog2_body_html: item.blog2_body_html ?? item.blog2BodyHtml ?? undefined,
+          blog2_feature_image: item.blog2_feature_image ?? item.blog2FeatureImage ?? undefined,
+          blog2_images: item.blog2_images ?? item.blog2Images ?? undefined,
+          blog2_videos: item.blog2_videos ?? item.blog2Videos ?? undefined,
           body_data: item.body_data ?? undefined,
           created_at: item.created_at ?? item.createdAt ?? undefined,
+          source: "clients" as const,
         }));
 
+        // set initial list from whichever candidate responded first
         setList(normalized);
         setLoading(false);
-
         setStatus(`Loaded ${normalized.length} client(s) from ${endpoint} (status ${res.status})`);
-        console.debug("[admin fetchList] normalized length:", normalized.length);
-        console.groupEnd();
+
+        // Now also try to fetch clients_blog2 and merge (non-blocking)
+        try {
+          const res2 = await fetch("/api/admin/clients_blog2", {
+            method: "GET",
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          });
+          if (res2.ok) {
+            const data2 = await res2.json().catch(() => []);
+            if (Array.isArray(data2) && data2.length) {
+              const blog2Normalized = data2.map((r: any) => ({
+                id: String(r.id),
+                client_name: r.client_name ?? r.clientName ?? "",
+                logo_url: r.logo_url ?? r.logoUrl ?? r.logo ?? r.image ?? "",
+                blog2_title: r.blog2_title ?? r.blog2Title ?? "",
+                blog2_slug: r.blog2_slug ?? r.blog2Slug ?? "",
+                blog2_body_html: r.blog2_body_html ?? r.blog2BodyHtml ?? r.blog_body_html ?? "",
+                blog2_feature_image: r.blog2_feature_image ?? r.blog2FeatureImage ?? (r.blog2_images && r.blog2_images[0]) ?? null,
+                blog2_images: Array.isArray(r.blog2_images) ? r.blog2_images : [],
+                blog2_videos: Array.isArray(r.blog2_videos) ? r.blog2_videos : [],
+                created_at: r.created_at ?? r.createdAt ?? null,
+                source: "clients_blog2" as const,
+              }));
+
+              const existingIds = new Set(normalized.map((x: any) => x.id));
+              const combined = [...normalized, ...blog2Normalized.filter((r: any) => !existingIds.has(r.id))];
+              setList(combined);
+              setStatus((s) => (s ? s + " + blog2 loaded" : `Loaded ${combined.length} clients including blog2`));
+            }
+          } else {
+            // ignore non-OK for blog2 (optional)
+          }
+        } catch (err) {
+          console.warn("fetch /api/admin/clients_blog2 failed:", err);
+        }
+
         return;
       } catch (err) {
-        console.error("[admin fetchList] fetch error for", endpoint, err);
         lastDebug = { endpoint, err };
-        console.groupEnd();
       }
     }
 
     setLoading(false);
-    if (lastDebug) {
-      console.error("[admin fetchList] all endpoints failed. last debug:", lastDebug);
-      setStatus(`Failed to load clients. See console for details. Last try: ${JSON.stringify(lastDebug).slice(0, 600)}${JSON.stringify(lastDebug).length > 600 ? "…" : ""}`);
-    } else {
-      setStatus("No endpoints returned clients (empty result).");
-    }
+    setStatus(lastDebug ? `Failed to load clients. See console.` : "No endpoints returned clients.");
+    console.error("fetchList last debug:", lastDebug);
   }
 
   function openEdit(item: Partial<Client> | Record<string, any>) {
@@ -188,11 +235,21 @@ export default function AdminPage() {
       blog_feature_image: i.blog_feature_image ?? i.blogFeatureImage ?? i.feature_image ?? "",
       images: i.images ?? i.imageUrls ?? undefined,
       videos: i.videos ?? i.videoUrls ?? undefined,
+      blog2_title: i.blog2_title ?? i.blog2Title ?? undefined,
+      blog2_slug: i.blog2_slug ?? i.blog2Slug ?? undefined,
+      blog2_body_html: i.blog2_body_html ?? i.blog2BodyHtml ?? undefined,
+      blog2_feature_image: i.blog2_feature_image ?? i.blog2FeatureImage ?? undefined,
+      blog2_images: i.blog2_images ?? i.blog2Images ?? undefined,
+      blog2_videos: i.blog2_videos ?? i.blog2Videos ?? undefined,
       body_data: i.body_data ?? undefined,
+      // IMPORTANT: preserve which source this row came from so modal can branch
+      source: (i.source as any) ?? (i.blog2_title || i.blog2_body_html ? "clients_blog2" : "clients"),
     });
+
     setEditingLogoPreview(i.logo_url ?? i.logoUrl ?? i.logo ?? null);
     setEditingFeaturePreview(i.blog_feature_image ?? i.blogFeatureImage ?? i.feature_image ?? null);
-    setEditingVideoPreview((i.videos && i.videos[0]) ?? (i.videoUrls && i.videoUrls[0]) ?? null);
+    setEditingVideoPreview((i.videos && i.videos[0]) ?? null);
+    setEditingBlog2FeaturePreview(i.blog2_feature_image ?? i.blog2FeatureImage ?? null);
   }
 
   async function readResponse(res: Response) {
@@ -215,35 +272,7 @@ export default function AdminPage() {
   const CLIENT_MAX_MB = 8;
   const CLIENT_MAX_BYTES = CLIENT_MAX_MB * 1024 * 1024;
 
-  async function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    console.log("Selected file:", file.name, "size:", human(file.size));
-    if (file.size > CLIENT_MAX_BYTES) {
-      alert(`File is too large: ${file.name} is ${human(file.size)}. Max allowed is ${CLIENT_MAX_MB}MB.`);
-      e.target.value = "";
-      return;
-    }
-
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/uploads", { method: "POST", body: fd });
-    const json = await res.json();
-    console.log("upload response:", json);
-  }
-
-  function pickUrlFromResponse(json: any): string | null {
-    if (!json) return null;
-    if (typeof json === "string") return json;
-    if (json.url) return String(json.url);
-    if (json.publicUrl) return String(json.publicUrl);
-    if (json.public_url) return String(json.public_url);
-    if (json.data && (json.data.publicUrl || json.data.public_url)) return String(json.data.publicUrl || json.data.public_url);
-    if (Array.isArray(json.urls) && json.urls.length > 0) return String(json.urls[0]);
-    return null;
-  }
-
+  /* ------------------ upload helpers ------------------ */
   async function uploadFileToServer(file: File) {
     const fd = new FormData();
     fd.append("file", file);
@@ -253,9 +282,17 @@ export default function AdminPage() {
       const msg = (json && (json.error || json.message)) || text || `Upload failed (${status})`;
       throw new Error(msg);
     }
-    const url = pickUrlFromResponse(json ?? text);
-    if (!url) throw new Error("Upload did not return a usable url; check server response in console.");
-    return url;
+    // try to pick url
+    const payload = json ?? (text ? JSON.parse(text) : null);
+    if (!payload) throw new Error("Upload returned no payload");
+    if (typeof payload === "string") return payload;
+    if (payload.url) return String(payload.url);
+    if (payload.publicUrl) return String(payload.publicUrl);
+    if (payload.public_url) return String(payload.public_url);
+    if (payload.data?.publicUrl) return String(payload.data.publicUrl);
+    if (Array.isArray(payload.urls) && payload.urls.length) return String(payload.urls[0]);
+    // fallback: return raw JSON as string (unlikely)
+    throw new Error("Upload response didn't contain a usable URL");
   }
 
   async function uploadFilesToServer(files: File[]) {
@@ -269,11 +306,278 @@ export default function AdminPage() {
     return urls;
   }
 
+  /* ------------------ create handlers (separate) ------------------ */
+
+  // Create Blog1 only (does NOT send blog2 fields)
+  async function handleCreateBlog1(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!clientName1.trim() || !blogTitle1.trim()) {
+      setStatus("Please fill required fields (client name & blog title).");
+      return;
+    }
+    if (!logoUrl1 && selectedFiles1.length === 0) {
+      setStatus("Please upload a logo (required) or select files to include.");
+      return;
+    }
+
+    setStatus("Creating Blog 1...");
+    setUploadingFiles(true);
+
+    try {
+      let uploadedImageUrls: string[] = [];
+      let uploadedVideoUrls: string[] = [];
+
+      if (selectedFiles1.length > 0) uploadedImageUrls = await uploadFilesToServer(selectedFiles1);
+      if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(selectedVideos1);
+
+      let logoToSend = logoUrl1 || (uploadedImageUrls.length ? uploadedImageUrls[0] : undefined);
+
+      const payload: any = {
+        client_name: clientName1.trim(),
+        logo_url: logoToSend,
+        blog_title: blogTitle1.trim(),
+        blog_slug: slugify(blogTitle1),
+        cta_text: ctaText1 || undefined,
+        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
+        videos: uploadedVideoUrls.length > 0 ? uploadedVideoUrls : undefined,
+        blog_body_html: blogBody1 || "", // ensure non-null to avoid DB constraint
+        blog_feature_image: featureImageUrl1 || (uploadedImageUrls.length > 0 ? uploadedImageUrls[0] : undefined),
+        created_at: new Date().toISOString(),
+      };
+
+      const res = await fetch("/api/admin/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const { ok, json, text, status: st } = await readResponse(res);
+      if (!ok) throw new Error((json && (json.error || json.message)) || text || `Server returned ${st}`);
+
+      setStatus("✅ Created Blog 1");
+      // reset Blog1 form
+      setClientName1("");
+      setBlogTitle1("");
+      setBlogBody1("");
+      setCtaText1("Read full blog");
+      setSelectedFiles1([]);
+      setPreviews1([]);
+      setSelectedVideos1([]);
+      setVideoPreviews1([]);
+      if (fileInputRef1.current) fileInputRef1.current.value = "";
+      if (videoInputRef1.current) videoInputRef1.current.value = "";
+      setLogoUrl1("");
+      setFeatureImageUrl1("");
+      await fetchList();
+    } catch (err: any) {
+      console.error("handleCreateBlog1 error:", err);
+      setStatus("Create failed: " + (err?.message || "unknown"));
+    } finally {
+      setUploadingFiles(false);
+    }
+  }
+
+  // Create Blog2 only (does NOT send blog1 fields)
+  async function handleCreateBlog2(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!clientName2.trim() || !blogTitle2.trim()) {
+      setStatus("Please fill required fields for Blog 2 (client & title).");
+      return;
+    }
+
+    setStatus("Creating Blog 2...");
+    setUploadingFiles(true);
+
+    try {
+      let uploadedImageUrls: string[] = [];
+      let uploadedVideoUrls: string[] = [];
+
+      if (selectedFiles2.length > 0) uploadedImageUrls = await uploadFilesToServer(selectedFiles2);
+      if (selectedVideos2.length > 0) uploadedVideoUrls = await uploadFilesToServer(selectedVideos2);
+
+      // Build payload (include top-level blog_title for server validation)
+      const payload: any = {
+        client_name: clientName2.trim(),
+        blog_title: blogTitle2.trim(), // required by server validation in your route
+        blog_slug: slugify(blogTitle2),
+        logo_url: logoUrl2 || (uploadedImageUrls.length ? uploadedImageUrls[0] : undefined),
+        // blog2-specific fields (kept separate)
+        blog2_title: blogTitle2.trim(),
+        blog2_slug: slugify(blogTitle2),
+        blog2_body_html: blogBody2 || undefined,
+        blog2_feature_image: featureImageUrl2 || (uploadedImageUrls.length ? uploadedImageUrls[0] : undefined),
+        blog2_images: uploadedImageUrls.length ? uploadedImageUrls : undefined,
+        blog2_videos: uploadedVideoUrls.length ? uploadedVideoUrls : undefined,
+        // important: ensure top-level blog_body_html is never null (db constraint).
+        blog_body_html: "",
+        created_at: new Date().toISOString(),
+      };
+
+      // <<< DEBUG: print payload so you can confirm what's actually being sent
+      console.debug("[Admin] handleCreateBlog2 payload:", payload);
+
+      const res = await fetch("/api/admin/clients_blog2", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      // <<< DEBUG: read raw response and log details
+      const rawText = await res.text().catch(() => "");
+      let jsonBody = null;
+      try {
+        jsonBody = rawText ? JSON.parse(rawText) : null;
+      } catch {}
+      console.debug("[Admin] handleCreateBlog2 response status:", res.status, res.statusText);
+      console.debug("[Admin] handleCreateBlog2 response body:", rawText, jsonBody);
+
+      if (!res.ok) {
+        // try to show server-provided message when possible
+        const serverMsg = (jsonBody && (jsonBody.error || jsonBody.message)) || rawText || `Server returned ${res.status}`;
+        throw new Error(serverMsg);
+      }
+
+      setStatus("✅ Created Blog 2");
+      // reset Blog2 form
+      setClientName2("");
+      setBlogTitle2("");
+      setBlogBody2("");
+      setSelectedFiles2([]);
+      setPreviews2([]);
+      setSelectedVideos2([]);
+      setVideoPreviews2([]);
+      if (fileInputRef2.current) fileInputRef2.current.value = "";
+      if (videoInputRef2.current) videoInputRef2.current.value = "";
+      setLogoUrl2("");
+      setFeatureImageUrl2("");
+      await fetchList();
+    } catch (err: any) {
+      console.error("handleCreateBlog2 error:", err);
+      // make UI error include the server message if we have one
+      setStatus("Create Blog2 failed: " + (err?.message || "unknown") + " — check console/network tab for full response.");
+    } finally {
+      setUploadingFiles(false);
+    }
+  }
+
+  /* ------------------ helpers for selecting files ------------------ */
+
+  function onFilesChange1(files: FileList | null) {
+    if (!files) return;
+    const arr = Array.from(files).slice(0, 4);
+    setSelectedFiles1(arr);
+    const urls = arr.map((f) => URL.createObjectURL(f));
+    setPreviews1((prev) => {
+      prev.forEach((p) => {
+        try {
+          URL.revokeObjectURL(p);
+        } catch {}
+      });
+      return urls;
+    });
+    setStatus(arr.length ? `${arr.length} image(s) selected for Blog1` : null);
+  }
+
+  // UPDATED: upload videos immediately and replace blob previews with server URLs
+  async function onVideosChange1(files: FileList | null) {
+    if (!files) return;
+    const arr = Array.from(files).slice(0, 4);
+    setSelectedVideos1(arr);
+
+    // show immediate blob previews so user sees something
+    const tempUrls = arr.map((f) => URL.createObjectURL(f));
+    setVideoPreviews1((prev) => {
+      prev.forEach((p) => {
+        try {
+          if (p.startsWith("blob:")) URL.revokeObjectURL(p);
+        } catch {}
+      });
+      return tempUrls;
+    });
+    setStatus(`Uploading ${arr.length} video(s)...`);
+
+    try {
+      const uploaded = await uploadFilesToServer(arr);
+      // replace previews with server URLs, revoke blobs
+      tempUrls.forEach((t) => {
+        try {
+          if (t.startsWith("blob:")) URL.revokeObjectURL(t);
+        } catch {}
+      });
+      setVideoPreviews1(uploaded);
+      setStatus(`Uploaded ${uploaded.length} video(s)`);
+    } catch (err: any) {
+      console.error("onVideosChange1 upload error:", err);
+      setStatus("Video upload failed: " + (err?.message || "unknown"));
+      // keep blob previews so user can retry upload or inspect
+    }
+  }
+
+  function onFilesChange2(files: FileList | null) {
+    if (!files) return;
+    const arr = Array.from(files).slice(0, 4);
+    setSelectedFiles2(arr);
+    const urls = arr.map((f) => URL.createObjectURL(f));
+    setPreviews2((prev) => {
+      prev.forEach((p) => {
+        try {
+          URL.revokeObjectURL(p);
+        } catch {}
+      });
+      return urls;
+    });
+    setStatus(arr.length ? `${arr.length} image(s) selected for Blog2` : null);
+  }
+
+  // UPDATED: upload videos immediately and replace blob previews with server URLs
+  async function onVideosChange2(files: FileList | null) {
+    if (!files) return;
+    const arr = Array.from(files).slice(0, 4);
+    setSelectedVideos2(arr);
+
+    // show immediate blob previews
+    const tempUrls = arr.map((f) => URL.createObjectURL(f));
+    setVideoPreviews2((prev) => {
+      prev.forEach((p) => {
+        try {
+          if (p.startsWith("blob:")) URL.revokeObjectURL(p);
+        } catch {}
+      });
+      return tempUrls;
+    });
+    setStatus(`Uploading ${arr.length} video(s)...`);
+
+    try {
+      const uploaded = await uploadFilesToServer(arr);
+      tempUrls.forEach((t) => {
+        try {
+          if (t.startsWith("blob:")) URL.revokeObjectURL(t);
+        } catch {}
+      });
+      setVideoPreviews2(uploaded);
+      setStatus(`Uploaded ${uploaded.length} video(s)`);
+    } catch (err: any) {
+      console.error("onVideosChange2 upload error:", err);
+      setStatus("Video upload failed: " + (err?.message || "unknown"));
+    }
+  }
+
+  function slugify(input: string) {
+    return input
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\-_\s]/g, "")
+      .replace(/\s+/g, "-")
+      .slice(0, 80);
+  }
+
+  /* ------------------ delete + edit helpers ------------------ */
+
   async function handleDelete(item: Client) {
-    if (!confirm(`Delete "${item.blog_title || item.client_name}"? This will remove images.`)) return;
+    if (!confirm(`Delete "${item.blog_title || item.blog2_title || item.client_name}"? This will remove images.`)) return;
     setStatus("Deleting...");
     try {
-      const res = await fetch(`/api/admin/clients/${item.id}`, { method: "DELETE" });
+      const base = item.source === "clients_blog2" ? "/api/admin/clients_blog2" : "/api/admin/clients";
+      const res = await fetch(`${base}/${item.id}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((json && (json.error || json.message)) || `Server returned ${res.status}`);
       setStatus("Deleted ✅");
@@ -295,13 +599,14 @@ export default function AdminPage() {
       const url = await uploadFileToServer(file);
       if (type === "logo") {
         setEditingLogoPreview(url);
-        setEditing({ ...editing, logo_url: url });
+        setEditing((prev) => (prev ? { ...prev, logo_url: url } : prev));
       } else if (type === "feature") {
         setEditingFeaturePreview(url);
-        setEditing({ ...editing, blog_feature_image: url });
+        setEditing((prev) => (prev ? { ...prev, blog_feature_image: url } : prev));
       } else {
+        // replace first video
         setEditingVideoPreview(url);
-        setEditing({ ...editing, videos: [url, ...(editing.videos ?? []).slice(1)] });
+        setEditing((prev) => (prev ? { ...prev, videos: [url, ...(prev.videos ?? []).slice(1)] } : prev));
       }
       setStatus(`Uploaded ${type}`);
     } catch (err: any) {
@@ -314,7 +619,32 @@ export default function AdminPage() {
     }
   }
 
-  async function saveEdit(updated: Client) {
+  async function handleEditBlog2FileInput(e: React.ChangeEvent<HTMLInputElement>, type: "blog2Feature" | "blog2Video") {
+    const file = e.target.files?.[0];
+    if (!file || !editing) return;
+    try {
+      if (type === "blog2Feature") setEditingBlog2FeatureUploading(true);
+      else setEditingVideoUploading(true);
+      setStatus(null);
+      const url = await uploadFileToServer(file);
+      if (type === "blog2Feature") {
+        setEditingBlog2FeaturePreview(url);
+        setEditing((prev) => (prev ? { ...prev, blog2_feature_image: url } : prev));
+      } else {
+        setEditing((prev) => (prev ? { ...prev, blog2_videos: [url, ...(prev.blog2_videos ?? []).slice(1)] } : prev));
+      }
+      setStatus("Uploaded blog2 file");
+    } catch (err: any) {
+      console.error("handleEditBlog2FileInput error:", err);
+      setStatus("Upload failed: " + (err?.message || "unknown"));
+    } finally {
+      if (type === "blog2Feature") setEditingBlog2FeatureUploading(false);
+      else setEditingVideoUploading(false);
+    }
+  }
+
+  // Save edited client (PATCH)
+  async function saveEdit(updated: Client | null) {
     if (!updated?.id) return;
     setStatus("Saving...");
     try {
@@ -322,28 +652,38 @@ export default function AdminPage() {
         client_name: updated.client_name,
         blog_title: updated.blog_title,
         blog_slug: updated.blog_slug,
-        blog_body_html: updated.blog_body_html ?? blogBody ?? undefined,
+        blog_body_html: updated.blog_body_html ?? undefined,
         cta_text: updated.cta_text,
         images: updated.images !== undefined ? updated.images : undefined,
-        // IMPORTANT: include videos explicitly if present on the editing object.
-        videos: (updated as any).videos !== undefined ? (updated as any).videos ?? [] : undefined,
+        videos: updated.videos !== undefined ? updated.videos ?? [] : undefined,
         body_data: updated.body_data || undefined,
         blog_feature_image: updated.blog_feature_image || undefined,
+        // blog2 fields - include explicitly if present (allow clearing with empty arrays)
+        blog2_title: (updated as any).blog2_title ?? undefined,
+        blog2_slug: (updated as any).blog2_slug ?? undefined,
+        blog2_body_html: (updated as any).blog2_body_html ?? undefined,
+        blog2_feature_image: (updated as any).blog2_feature_image ?? undefined,
+        blog2_images: (updated as any).blog2_images !== undefined ? (updated as any).blog2_images ?? [] : undefined,
+        blog2_videos: (updated as any).blog2_videos !== undefined ? (updated as any).blog2_videos ?? [] : undefined,
       };
-      if (updated.logo_url) payload.logo_url = updated.logo_url;
-      if (updated.blog_feature_image) payload.blog_feature_image = updated.blog_feature_image;
 
-      const res = await fetch(`/api/admin/clients/${updated.id}`, {
+      // If the editor cleared logo explicitly, still send if present (server will decide).
+      if (updated.logo_url) payload.logo_url = updated.logo_url;
+
+      const base = updated.source === "clients_blog2" ? "/api/admin/clients_blog2" : "/api/admin/clients";
+      const res = await fetch(`${base}/${updated.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((json && (json.error || json.message)) || `Server returned ${res.status}`);
+
       setEditing(null);
       setEditingLogoPreview(null);
       setEditingFeaturePreview(null);
       setEditingVideoPreview(null);
+      setEditingBlog2FeaturePreview(null);
       setStatus("Saved ✅");
       await fetchList();
     } catch (err: any) {
@@ -352,445 +692,813 @@ export default function AdminPage() {
     }
   }
 
-  function onFilesChange(files: FileList | null) {
-    if (!files) return;
-    const arr = Array.from(files).slice(0, 4);
-    setSelectedFiles(arr);
-
-    const urls = arr.map((f) => URL.createObjectURL(f));
-    setPreviews((prev) => {
-      prev.forEach((p) => {
-        try {
-          URL.revokeObjectURL(p);
-        } catch {}
-      });
-      return urls;
-    });
-
-    setStatus(arr.length ? `${arr.length} image(s) selected (max 4)` : null);
+  /* ------------------ small helpers for rendering videos ------------------ */
+  function videoOnError(e: React.SyntheticEvent<HTMLVideoElement>) {
+    console.warn("video error", e);
+    setStatus("Video failed to load. Check file or server URL.");
   }
 
-  function onVideosChange(files: FileList | null) {
-    if (!files) return;
-    const arr = Array.from(files).slice(0, 4);
-    setSelectedVideos(arr);
-
-    const urls = arr.map((f) => URL.createObjectURL(f));
-    setVideoPreviews((prev) => {
-      prev.forEach((p) => {
-        try {
-          URL.revokeObjectURL(p);
-        } catch {}
-      });
-      return urls;
-    });
-
-    setStatus(arr.length ? `${arr.length} video(s) selected (max 4)` : null);
-  }
-
-  function slugify(input: string) {
-    return input
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\-_\s]/g, "")
-      .replace(/\s+/g, "-")
-      .slice(0, 80);
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!clientName.trim() || !blogTitle.trim()) {
-      setStatus("Please fill required fields (client name & blog title).");
-      return;
-    }
-    if (!logoUrl && selectedFiles.length === 0) {
-      setStatus("Please upload a logo (required) or select files to include.");
-      return;
-    }
-
-    setStatus("Creating...");
-    setUploadingFiles(true);
-
-    try {
-      let uploadedImageUrls: string[] = [];
-      let uploadedVideoUrls: string[] = [];
-
-      if (selectedFiles.length > 0) {
-        uploadedImageUrls = await uploadFilesToServer(selectedFiles);
-      }
-      if (selectedVideos.length > 0) {
-        uploadedVideoUrls = await uploadFilesToServer(selectedVideos);
-      }
-
-      let logoUrlLocal = logoUrl || "";
-      if (!logoUrlLocal && uploadedImageUrls.length > 0) logoUrlLocal = uploadedImageUrls[0];
-
-      const payload: any = {
-        client_name: clientName.trim(),
-        logo_url: logoUrlLocal || undefined,
-        blog_title: blogTitle.trim(),
-        blog_slug: slugify(blogTitle),
-        cta_text: ctaText || undefined,
-        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-        videos: uploadedVideoUrls.length > 0 ? uploadedVideoUrls : undefined,
-        body_data: undefined,
-        blog_body_html: blogBody || undefined,
-        blog_feature_image: featureImageUrl || (uploadedImageUrls.length > 0 ? uploadedImageUrls[0] : undefined),
-      };
-
-      const res = await fetch("/api/admin/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const { ok, status: resStatus, json, text } = await readResponse(res);
-      if (!ok) {
-        const serverMsg = (json && (json.error || json.message)) || text || `Server returned ${resStatus}`;
-        throw new Error(serverMsg);
-      }
-
-      setStatus("✅ Created new blog");
-      setClientName("");
-      setBlogTitle("");
-      setBlogBody("");
-      setCtaText("Read full blog");
-      setSelectedFiles([]);
-      setPreviews([]);
-      setSelectedVideos([]);
-      setVideoPreviews([]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      if (videoInputRef.current) videoInputRef.current.value = "";
-      setLogoUrl("");
-      setFeatureImageUrl("");
-      await fetchList();
-    } catch (err: any) {
-      console.error("Create failed (final):", err);
-      setStatus("Create failed: " + (err?.message || "unknown"));
-    } finally {
-      setUploadingFiles(false);
-    }
-  }
-
+  /* ------------------ UI ------------------ */
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-6xl mx-auto p-6 space-y-8">
         <h1 className="text-2xl font-bold mb-4">Admin — Manage Clients & Blogs</h1>
 
-        <form onSubmit={handleCreate} className="bg-white shadow p-6 rounded space-y-4">
-          <h2 className="font-semibold text-lg">Add New Client + Blog</h2>
+        {/* ---------- CREATE PANELS: Blog1 (left) + Blog2 (right) ---------- */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Blog 1 create */}
+          <form onSubmit={async (e) => { e.preventDefault(); await handleCreateBlog1(); }} className="bg-white shadow p-6 rounded space-y-4">
+            <h2 className="font-semibold text-lg">Create — Blog 1</h2>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium">Client Name *</label>
-              <input value={clientName} onChange={(e) => setClientName(e.target.value)} className="w-full border rounded px-2 py-1" />
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium">Client Name *</label>
+                <input value={clientName1} onChange={(e) => setClientName1(e.target.value)} className="w-full border rounded px-2 py-1" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">Case Study Title *</label>
+                <input value={blogTitle1} onChange={(e) => setBlogTitle1(e.target.value)} className="w-full border rounded px-2 py-1" />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium">Blog Title *</label>
-              <input value={blogTitle} onChange={(e) => setBlogTitle(e.target.value)} className="w-full border rounded px-2 py-1" />
+              <label className="block text-sm font-medium">Case Study Body *</label>
+              <SimpleEditor value={blogBody1} onChange={(html) => setBlogBody1(html)} placeholder="Start typing your blog..." />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium">Blog Body *</label>
-
-            <SimpleEditor value={blogBody} onChange={(html) => setBlogBody(html)} placeholder="Start typing your blog..." />
-            <p className="text-xs text-gray-500 mt-1">HTML saved to <code>blog_body_html</code>. Use the toolbar above to format text.</p>
-
-            <style>{`
-              div[contenteditable] ul {
-                padding-left: 2rem;
-                margin: 0.5rem 0;
-              }
-              div[contenteditable] li {
-                margin: 0.25rem 0;
-                line-height: 1.4;
-              }
-              div[contenteditable] * { direction: ltr !important; unicode-bidi: embed !important; }
-            `}</style>
-          </div>
-
-          {/* images */}
-          <div>
-            <label className="block text-sm font-medium">Images (1–4) — optional</label>
-            <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={(e) => onFilesChange(e.target.files)} />
-            <div className="mt-3 flex gap-3">
-              {previews.map((src, idx) => (
-                <div key={idx} className="w-28 h-28 relative border overflow-hidden rounded">
-                  <Image src={src} alt={`preview-${idx}`} fill style={{ objectFit: "cover" }} />
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium">Images (1–4)</label>
+                <input ref={fileInputRef1} type="file" accept="image/*" multiple onChange={(e) => onFilesChange1(e.target.files)} />
+                <div className="mt-3 flex gap-3">
+                  {previews1.map((src, idx) => (
+                    <div key={idx} className="w-24 h-24 relative border overflow-hidden rounded">
+                      <Image src={src} alt={`preview1-${idx}`} fill style={{ objectFit: "cover" }} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">{selectedFiles.length} image(s) selected (max 4).</div>
-          </div>
+              </div>
 
-          {/* videos */}
-          <div>
-            <label className="block text-sm font-medium">Videos (0–4) — optional</label>
-            <input ref={videoInputRef} type="file" accept="video/*" multiple onChange={(e) => onVideosChange(e.target.files)} />
-            <div className="mt-3 flex gap-3">
-              {videoPreviews.map((src, idx) => (
-                <div key={idx} className="w-36 h-24 border rounded overflow-hidden">
-                  <video src={src} controls className="w-full h-full object-cover" />
+              <div>
+                <label className="block text-sm font-medium">Videos (0–4)</label>
+                <input ref={videoInputRef1} type="file" accept="video/*" multiple onChange={(e) => onVideosChange1(e.target.files)} />
+                <div className="mt-3 flex gap-3">
+                  {videoPreviews1.map((src) => (
+                    <div key={src} className="w-36 h-24 border rounded overflow-hidden">
+                      <video
+                        key={src}
+                        src={src}
+                        controls
+                        preload="metadata"
+                        crossOrigin="anonymous"
+                        onError={videoOnError}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">{selectedVideos.length} video(s) selected (max 4).</div>
-          </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium">Client Logo (required)</label>
+
+                {logoUrl1 ? (
+                  <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+                    <Image src={logoUrl1} alt="logo1" fill style={{ objectFit: "contain" }} sizes="112px" />
+                    <button
+                      type="button"
+                      aria-label="Remove logo"
+                      onClick={() => setLogoUrl1("")}
+                      className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                      title="Remove logo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingLogo1(true);
+                      try {
+                        const url = await uploadFileToServer(file);
+                        setLogoUrl1(url);
+                        setStatus("Logo uploaded (Blog1)");
+                      } catch (err: any) {
+                        console.error("Logo upload error:", err);
+                        setStatus("Upload failed: " + (err?.message || err));
+                      } finally {
+                        setUploadingLogo1(false);
+                      }
+                    }}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">Client Feature Image (optional)</label>
+
+                {featureImageUrl1 ? (
+                  <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+                    <Image src={featureImageUrl1} alt="feature1" fill style={{ objectFit: "contain" }} sizes="112px" />
+                    <button
+                      type="button"
+                      aria-label="Remove feature image"
+                      onClick={() => setFeatureImageUrl1("")}
+                      className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                      title="Remove feature image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingFeature1(true);
+                      try {
+                        const url = await uploadFileToServer(file);
+                        setFeatureImageUrl1(url);
+                        setStatus("Feature uploaded (Blog1)");
+                      } catch (err: any) {
+                        console.error("Feature upload error:", err);
+                        setStatus("Upload failed: " + (err?.message || err));
+                      } finally {
+                        setUploadingFeature1(false);
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button type="submit" disabled={uploadingFiles} className="px-4 py-2 bg-orange-500 text-white rounded">
+                {uploadingFiles ? "Creating…" : "Create Blog 1"}
+              </button>
+            </div>
+          </form>
+
+          {/* Blog 2 create */}
+          <form onSubmit={async (e) => { e.preventDefault(); await handleCreateBlog2(); }} className="bg-white shadow p-6 rounded space-y-4">
+            <h2 className="font-semibold text-lg">Create — Blog 2</h2>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium">Author Name *</label>
+                <input value={clientName2} onChange={(e) => setClientName2(e.target.value)} className="w-full border rounded px-2 py-1" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">Blog Title *</label>
+                <input value={blogTitle2} onChange={(e) => setBlogTitle2(e.target.value)} className="w-full border rounded px-2 py-1" />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium">Logo (required)</label>
-              {logoUrl ? (
-                <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-                  <Image src={logoUrl} alt="logo" fill style={{ objectFit: "contain" }} sizes="112px" />
-                </div>
-              ) : (
-                <input type="file" accept="image/*" onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setUploadingLogo(true);
-                  try {
-                    const url = await uploadFileToServer(file);
-                    setLogoUrl(url);
-                    setStatus("Logo uploaded");
-                  } catch (err: any) {
-                    console.error("Logo upload error:", err);
-                    setStatus("Upload failed: " + (err?.message || err));
-                  } finally {
-                    setUploadingLogo(false);
-                  }
-                }} />
-              )}
-              {uploadingLogo && <div className="text-xs text-gray-500">Uploading...</div>}
+              <label className="block text-sm font-medium">Blog Body *</label>
+              <SimpleEditor value={blogBody2} onChange={(html) => setBlogBody2(html)} placeholder="Start typing Blog2..." />
+              <div className="mt-2 text-xs text-gray-500">Formatting toolbar (B I U, lists, links) shown by the editor.</div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium">Feature Image (optional)</label>
-              {featureImageUrl ? (
-                <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-                  <Image src={featureImageUrl} alt="feature" fill style={{ objectFit: "contain" }} sizes="112px" />
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium">Blog Images (1–4)</label>
+                <input ref={fileInputRef2} type="file" accept="image/*" multiple onChange={(e) => onFilesChange2(e.target.files)} />
+                <div className="mt-3 flex gap-3">
+                  {previews2.map((src, idx) => (
+                    <div key={idx} className="w-24 h-24 relative border overflow-hidden rounded">
+                      <Image src={src} alt={`preview2-${idx}`} fill style={{ objectFit: "cover" }} />
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <input type="file" accept="image/*" onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setUploadingFeature(true);
-                  try {
-                    const url = await uploadFileToServer(file);
-                    setFeatureImageUrl(url);
-                    setStatus("Feature image uploaded");
-                  } catch (err: any) {
-                    console.error("Feature upload error:", err);
-                    setStatus("Upload failed: " + (err?.message || err));
-                  } finally {
-                    setUploadingFeature(false);
-                  }
-                }} />
-              )}
-              {uploadingFeature && <div className="text-xs text-gray-500">Uploading...</div>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">Blog Videos (0–4)</label>
+                <input ref={videoInputRef2} type="file" accept="video/*" multiple onChange={(e) => onVideosChange2(e.target.files)} />
+                <div className="mt-3 flex gap-3">
+                  {videoPreviews2.map((src) => (
+                    <div key={src} className="w-36 h-24 border rounded overflow-hidden">
+                      <video
+                        key={src}
+                        src={src}
+                        controls
+                        preload="metadata"
+                        crossOrigin="anonymous"
+                        onError={videoOnError}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="flex justify-end">
-            <button type="submit" disabled={uploadingFiles} className="px-4 py-2 bg-orange-500 text-white rounded">
-              {uploadingFiles ? "Creating…" : "Create"}
-            </button>
-          </div>
-        </form>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium">Author Photo (required)</label>
 
-        {/* Existing clients list */}
+                {logoUrl2 ? (
+                  <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+                    <Image src={logoUrl2} alt="logo2" fill style={{ objectFit: "contain" }} sizes="112px" />
+                    <button
+                      type="button"
+                      aria-label="Remove logo"
+                      onClick={() => setLogoUrl2("")}
+                      className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                      title="Remove logo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingLogo2(true);
+                      try {
+                        const url = await uploadFileToServer(file);
+                        setLogoUrl2(url);
+                        setStatus("Logo uploaded (Blog2)");
+                      } catch (err: any) {
+                        console.error("Logo upload error:", err);
+                        setStatus("Upload failed: " + (err?.message || err));
+                      } finally {
+                        setUploadingLogo2(false);
+                      }
+                    }}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">Feature Image (optional)</label>
+
+                {featureImageUrl2 ? (
+                  <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+                    <Image src={featureImageUrl2} alt="feature2" fill style={{ objectFit: "contain" }} sizes="112px" />
+                    <button
+                      type="button"
+                      aria-label="Remove feature image"
+                      onClick={() => setFeatureImageUrl2("")}
+                      className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                      title="Remove feature image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingFeature2(true);
+                      try {
+                        const url = await uploadFileToServer(file);
+                        setFeatureImageUrl2(url);
+                        setStatus("Feature uploaded (Blog2)");
+                      } catch (err: any) {
+                        console.error("Feature upload error:", err);
+                        setStatus("Upload failed: " + (err?.message || err));
+                      } finally {
+                        setUploadingFeature2(false);
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button type="submit" disabled={uploadingFiles} className="px-4 py-2 bg-sky-600 text-white rounded">
+                {uploadingFiles ? "Creating…" : "Create Blog 2"}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Existing clients lists (separated into Blog1 and Blog2) */}
         <div>
           <h2 className="font-semibold text-lg mb-2">Existing Clients</h2>
-          {loading ? <div>Loading…</div> : list.length === 0 ? <div>No clients found.</div> : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {list.map((c) => (
-                <div key={c.id} className="bg-white p-4 rounded shadow flex gap-4">
-                  <div className="w-28 h-20 relative flex-shrink-0">
-                    {c.logo_url ? <Image src={c.logo_url} alt={c.client_name || "logo"} fill style={{ objectFit: "contain" }} sizes="112px" /> : <div className="bg-gray-100 w-full h-full flex items-center justify-center text-xs text-gray-400">No logo</div>}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="text-sm text-gray-600">{c.client_name}</div>
-                        <div className="font-semibold">{c.blog_title}</div>
-                        <div className="text-xs text-gray-500">{c.blog_slug}</div>
+
+          {loading ? (
+            <div>Loading…</div>
+          ) : list.length === 0 ? (
+            <div>No clients found.</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {list
+                  .filter((c) => (c.blog_title && String(c.blog_title).trim()) || (c.blog_body_html && String(c.blog_body_html).trim()))
+                  .map((c) => (
+                    <div key={`b1-${c.id}`} className="bg-white p-4 rounded shadow flex gap-4">
+                      <div className="w-28 h-20 relative flex-shrink-0">
+                        {c.logo_url ? (
+                          <Image src={c.logo_url} alt={c.client_name || "logo"} fill style={{ objectFit: "contain" }} sizes="112px" />
+                        ) : (
+                          <div className="bg-gray-100 w-full h-full flex items-center justify-center text-xs text-gray-400">No logo</div>
+                        )}
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => openEdit(c)} className="px-2 py-1 bg-blue-500 text-white text-sm rounded">Edit</button>
-                        <button onClick={() => handleDelete(c)} className="px-2 py-1 bg-red-500 text-white text-sm rounded">Delete</button>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="text-sm text-gray-600">{c.client_name}</div>
+                            <div className="font-semibold">{c.blog_title}</div>
+                            <div className="text-xs text-gray-500">{c.blog_slug}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => openEdit(c)} className="px-2 py-1 bg-blue-500 text-white text-sm rounded">Edit</button>
+                            <button onClick={() => handleDelete(c)} className="px-2 py-1 bg-red-500 text-white text-sm rounded">Delete</button>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-700 line-clamp-3" dangerouslySetInnerHTML={{ __html: c.blog_body_html || "" }} />
                       </div>
                     </div>
-                    <div className="mt-2 text-xs text-gray-700 line-clamp-3" dangerouslySetInnerHTML={{ __html: c.blog_body_html || "" }} />
-                  </div>
-                </div>
-              ))}
-            </div>
+                  ))}
+              </div>
+            </>
           )}
         </div>
 
-        {status && <div className="text-sm mt-4 text-gray-700">{status}</div>
+        {/* Blog2 list */}
+        <div>
+          <h2 className="font-semibold text-lg mb-2">Existing Blogs</h2>
 
-        }
-        {/* Edit modal rendered below (kept same layout as earlier segment) */}
-        {editing && (
-  <div
-    className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-    role="dialog"
-    aria-modal="true"
-    onClick={() => setEditing(null)}
-  >
-    <div
-      className="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 overflow-hidden"
-      onClick={(e) => e.stopPropagation()}
-      style={{ maxHeight: "80vh", display: "flex", flexDirection: "column" }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <h3 className="text-lg font-semibold">Edit — {editing.blog_title}</h3>
-        <button
-          aria-label="Close"
-          onClick={() => setEditing(null)}
-          className="rounded-full bg-gray-100 hover:bg-gray-200 w-9 h-9 flex items-center justify-center"
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* Body */}
-      <div className="p-4 overflow-auto" style={{ maxHeight: "calc(80vh - 112px)" }}>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium">Client Name</label>
-            <input
-              value={editing.client_name || ""}
-              onChange={(e) => setEditing({ ...editing, client_name: e.target.value })}
-              className="w-full border rounded px-2 py-1"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Blog Title</label>
-            <input
-              value={editing.blog_title || ""}
-              onChange={(e) => setEditing({ ...editing, blog_title: e.target.value })}
-              className="w-full border rounded px-2 py-1"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Blog Body (HTML/text)</label>
-            <div className="border rounded" style={{ height: "240px", overflow: "auto", padding: 8, background: "white" }}>
-              <SimpleEditor
-                value={editing.blog_body_html || ""}
-                onChange={(html) => setEditing({ ...editing, blog_body_html: html })}
-                placeholder="Start typing the blog..."
-              />
-            </div>
-          </div>
-
-          {/* Existing images */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Existing Images</label>
-            {(!editing.images || editing.images.length === 0) ? (
-              <div className="text-xs text-gray-500">No images attached.</div>
-            ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                {(editing.images || []).map((src, idx) => (
-                  <div key={idx} className="relative w-full h-24 rounded overflow-hidden border">
-                    <div className="absolute right-2 top-2 z-20">
-                      <button
-                        onClick={() => {
-                          const next = (editing.images || []).filter((_, i) => i !== idx);
-                          setEditing({ ...editing, images: next.length ? next : undefined });
-                        }}
-                        className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
-                        title="Remove image"
-                        aria-label={`Remove image ${idx + 1}`}
-                      >
-                        ✕
-                      </button>
+          {loading ? (
+            <div>Loading…</div>
+          ) : list.length === 0 ? (
+            <div>No clients found.</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {list
+                  .filter((c) => (c.blog2_title && String(c.blog2_title).trim()) || (c.blog2_body_html && String(c.blog2_body_html).trim()))
+                  .map((c) => (
+                    <div key={`b2-${c.id}`} className="bg-white p-4 rounded shadow flex gap-4">
+                      <div className="w-28 h-20 relative flex-shrink-0">
+                        {c.logo_url ? (
+                          <Image src={c.logo_url} alt={c.client_name || "logo"} fill style={{ objectFit: "contain" }} sizes="112px" />
+                        ) : (
+                          <div className="bg-gray-100 w-full h-full flex items-center justify-center text-xs text-gray-400">No logo</div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="text-sm text-gray-600">{c.client_name}</div>
+                            <div className="font-semibold">{c.blog2_title}</div>
+                            <div className="text-xs text-gray-500">{c.blog2_slug}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => openEdit(c)} className="px-2 py-1 bg-blue-500 text-white text-sm rounded">Edit</button>
+                            <button onClick={() => handleDelete(c)} className="px-2 py-1 bg-red-500 text-white text-sm rounded">Delete</button>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-700 line-clamp-3" dangerouslySetInnerHTML={{ __html: c.blog2_body_html || "" }} />
+                      </div>
                     </div>
-
-                    <div className="w-full h-full relative">
-                      <Image src={src} alt={`image-${idx}`} fill style={{ objectFit: "cover" }} />
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
-            )}
-          </div>
-
-          {/* Image upload (keep existing) */}
-          <div>
-            <label className="block text-sm font-medium">Add Images (1–4) — optional</label>
-            <input type="file" accept="image/*" multiple onChange={(e) => {
-              const files = e.target.files;
-              if (!files || files.length === 0) return;
-              const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-              setEditing({ ...editing, images: [...(editing.images || []), ...newUrls] });
-            }} />
-            <div className="text-xs text-gray-500 mt-1">{(editing.images || []).length} image(s) attached.</div>
-          </div>
-
-          {/* Existing videos */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Existing Videos</label>
-            {(!editing.videos || editing.videos.length === 0) ? (
-              <div className="text-xs text-gray-500">No videos attached.</div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {(editing.videos || []).map((src, idx) => (
-                  <div key={idx} className="relative w-full h-28 rounded overflow-hidden border bg-black/5 flex items-center justify-center">
-                    <div className="absolute right-2 top-2 z-20">
-                      <button
-                        onClick={() => {
-                          const next = (editing.videos || []).filter((_, i) => i !== idx);
-                          // if user removed last video, explicitly set an empty array so backend receives videos: []
-                          setEditing({ ...editing, videos: next.length ? next : [] });
-                        }}
-                        className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
-                        title="Remove video"
-                        aria-label={`Remove video ${idx + 1}`}
-                      >
-                        ✕
-                      </button>
-                    </div>
-
-                    <video src={src} controls className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Video upload (keep existing) */}
-          <div>
-            <label className="block text-sm font-medium">Add Videos — optional</label>
-            <input type="file" accept="video/*" multiple onChange={(e) => {
-              const files = e.target.files;
-              if (!files || files.length === 0) return;
-              const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-              setEditing({ ...editing, videos: [...(editing.videos || []), ...newUrls] });
-            }} />
-            <div className="text-xs text-gray-500 mt-1">{(editing.videos || []).length || 0} video(s) attached.</div>
-          </div>
+            </>
+          )}
         </div>
-      </div>
 
-      {/* Footer */}
-      <div className="p-4 border-t flex justify-end gap-2">
-        <button onClick={() => setEditing(null)} className="px-3 py-1 bg-gray-200 rounded">
-          Cancel
-        </button>
-        <button onClick={() => saveEdit(editing)} className="px-3 py-1 bg-green-600 text-white rounded">
-          Save
-        </button>
-      </div>
+        {status && <div className="text-sm mt-4 text-gray-700">{status}</div>}
+
+        {/* Edit modal (unchanged, handles both blog1 + blog2 fields) */}
+        {editing && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" role="dialog" aria-modal="true" onClick={() => setEditing(null)}>
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()} style={{ maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold">Edit — {editing.blog_title || editing.blog2_title}</h3>
+                <button aria-label="Close" onClick={() => setEditing(null)} className="rounded-full bg-gray-100 hover:bg-gray-200 w-9 h-9 flex items-center justify-center">✕</button>
+              </div>
+
+              {/* inside the existing modal: replace the content of the scrollable area with this */}
+              <div className="p-4 overflow-auto" style={{ maxHeight: "calc(80vh - 112px)" }}>
+                {/*
+                  Show a simplified Blog2-only editor when editing a clients_blog2 row.
+                  Otherwise show the full editor (old behavior).
+                */}
+                {editing.source === "clients_blog2" ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium">Author Name</label>
+                      <input
+                        value={editing.client_name || ""}
+                        onChange={(e) => setEditing((prev) => (prev ? { ...prev, client_name: e.target.value } : prev))}
+                        className="w-full border rounded px-2 py-1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Blog Title</label>
+                      <input
+                        value={(editing as any).blog2_title ?? ""}
+                        onChange={(e) => setEditing((prev) => (prev ? { ...prev, blog2_title: e.target.value } : prev))}
+                        className="w-full border rounded px-2 py-1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Blog Body (HTML)</label>
+                      <div className="border rounded" style={{ height: "240px", overflow: "auto", padding: 8, background: "white" }}>
+                        <SimpleEditor
+                          value={(editing as any).blog2_body_html ?? ""}
+                          onChange={(html) => setEditing((prev) => (prev ? { ...prev, blog2_body_html: html } : prev))}
+                          placeholder="Start typing Blog2..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium">Blog Images (1–4)</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
+                            const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+                            setEditing((prev) => (prev ? { ...prev, blog2_images: [...((prev.blog2_images as string[]) || []), ...newUrls] } : prev));
+                          }}
+                        />
+                        <div className="mt-3 grid grid-cols-3 gap-3">
+                          {(editing.blog2_images || []).map((src: string, idx: number) => (
+                            <div key={idx} className="relative w-full h-24 rounded overflow-hidden border">
+                              <div className="absolute right-2 top-2 z-20">
+                                <button
+                                  onClick={() => {
+                                    setEditing((prev) => {
+                                      if (!prev) return prev;
+                                      const next = (prev.blog2_images || []).filter((_, i) => i !== idx);
+                                      try { URL.revokeObjectURL(src); } catch {}
+                                      return { ...prev, blog2_images: next.length ? next : [] };
+                                    });
+                                  }}
+                                  className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="w-full h-full relative">
+                                <Image src={src} alt={`b2-image-${idx}`} fill style={{ objectFit: "cover" }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium">Blog Videos (0–4)</label>
+                        <input
+                          type="file"
+                          accept="video/*"
+                          multiple
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
+                            const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+                            setEditing((prev) => (prev ? { ...prev, blog2_videos: [...((prev.blog2_videos as string[]) || []), ...newUrls] } : prev));
+                          }}
+                        />
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                          {(editing.blog2_videos || []).map((src: string, idx: number) => (
+                            <div key={idx} className="relative w-full h-28 rounded overflow-hidden border bg-black/5 flex items-center justify-center">
+                              <div className="absolute right-2 top-2 z-20">
+                                <button
+                                  onClick={() => {
+                                    setEditing((prev) => {
+                                      if (!prev) return prev;
+                                      const next = (prev.blog2_videos || []).filter((_, i) => i !== idx);
+                                      try { URL.revokeObjectURL(src); } catch {}
+                                      return { ...prev, blog2_videos: next.length ? next : [] };
+                                    });
+                                  }}
+                                  className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <video src={src} controls className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium">Author Photo (required)</label>
+                        {editing.logo_url ? (
+                          <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+                            <Image src={editing.logo_url} alt="logo" fill style={{ objectFit: "contain" }} sizes="112px" />
+                            <button
+                              type="button"
+                              aria-label="Remove logo (editing)"
+                              onClick={() => setEditing((prev) => (prev ? { ...prev, logo_url: undefined } : prev))}
+                              className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                              title="Remove logo"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setEditingLogoUploading(true);
+                              try {
+                                const url = await uploadFileToServer(file);
+                                setEditing((prev) => (prev ? { ...prev, logo_url: url } : prev));
+                                setStatus("Logo uploaded (editing)");
+                              } catch (err: any) {
+                                console.error("Logo upload error:", err);
+                                setStatus("Upload failed: " + (err?.message || err));
+                              } finally {
+                                setEditingLogoUploading(false);
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium">Feature Image (optional)</label>
+                        {editing.blog2_feature_image ? (
+                          <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+                            <Image src={editing.blog2_feature_image} alt="feature" fill style={{ objectFit: "contain" }} sizes="112px" />
+                            <button
+                              type="button"
+                              aria-label="Remove blog2 feature image"
+                              onClick={() => setEditing((prev) => (prev ? { ...prev, blog2_feature_image: undefined } : prev))}
+                              className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                              title="Remove feature image"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setEditingBlog2FeatureUploading(true);
+                              try {
+                                const url = await uploadFileToServer(file);
+                                setEditing((prev) => (prev ? { ...prev, blog2_feature_image: url } : prev));
+                                setStatus("Feature uploaded (editing)");
+                              } catch (err: any) {
+                                console.error("Feature upload error:", err);
+                                setStatus("Upload failed: " + (err?.message || err));
+                              } finally {
+                                setEditingBlog2FeatureUploading(false);
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* ---------- existing full editor for Blog1 rows (unchanged) ---------- */
+                  /* ---------- REPLACE Blog1 editor (inside edit modal) with this minimal + logo/feature + Blog2 block ---------- */
+<div className="space-y-4">
+
+  <div>
+    <label className="block text-sm font-medium">Client Name *</label>
+    <input
+      value={editing.client_name || ""}
+      onChange={(e) => setEditing((prev) => (prev ? { ...prev, client_name: e.target.value } : prev))}
+      className="w-full border rounded px-2 py-1"
+      required
+    />
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium">Case study Title *</label>
+    <input
+      value={editing.blog_title || ""}
+      onChange={(e) => setEditing((prev) => (prev ? { ...prev, blog_title: e.target.value } : prev))}
+      className="w-full border rounded px-2 py-1"
+      required
+    />
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium">Case study Body *</label>
+    <div className="border rounded" style={{ height: "240px", overflow: "auto", padding: 8, background: "white" }}>
+      <SimpleEditor
+        value={editing.blog_body_html || ""}
+        onChange={(html) => setEditing((prev) => (prev ? { ...prev, blog_body_html: html } : prev))}
+        placeholder="Start typing the blog..."
+      />
     </div>
   </div>
-)}
+
+  {/* Images */}
+  <div>
+    <label className="block text-sm font-medium mb-2">Existing Images</label>
+    {(!editing.images || editing.images.length === 0) ? (
+      <div className="text-xs text-gray-500">No images attached.</div>
+    ) : (
+      <div className="grid grid-cols-3 gap-3">
+        {(editing.images || []).map((src, idx) => (
+          <div key={idx} className="relative w-full h-24 rounded overflow-hidden border">
+            <div className="absolute right-2 top-2 z-20">
+              <button
+                onClick={() => setEditing((prev) => {
+                  if (!prev) return prev;
+                  const next = (prev.images || []).filter((_, i) => i !== idx);
+                  try { URL.revokeObjectURL(src); } catch {}
+                  return { ...prev, images: next.length ? next : [] };
+                })}
+                className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
+                title="Remove image"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="w-full h-full relative"><Image src={src} alt={`image-${idx}`} fill style={{ objectFit: "cover" }} /></div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium">Add Images (1–4)</label>
+    <input
+      type="file"
+      accept="image/*"
+      multiple
+      onChange={(e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+        setEditing((prev) => (prev ? { ...prev, images: [...(prev.images || []), ...newUrls] } : prev));
+      }}
+    />
+  </div>
+
+  {/* Videos */}
+  <div>
+    <label className="block text-sm font-medium mb-2">Existing Videos</label>
+    {(!editing.videos || editing.videos.length === 0) ? (
+      <div className="text-xs text-gray-500">No videos attached.</div>
+    ) : (
+      <div className="grid grid-cols-2 gap-3">
+        {(editing.videos || []).map((src, idx) => (
+          <div key={idx} className="relative w-full h-28 rounded overflow-hidden border bg-black/5 flex items-center justify-center">
+            <div className="absolute right-2 top-2 z-20">
+              <button
+                onClick={() => setEditing((prev) => {
+                  if (!prev) return prev;
+                  const next = (prev.videos || []).filter((_, i) => i !== idx);
+                  try { URL.revokeObjectURL(src); } catch {}
+                  return { ...prev, videos: next.length ? next : [] };
+                })}
+                className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
+                title="Remove video"
+              >
+                ✕
+              </button>
+            </div>
+            <video src={src} controls className="w-full h-full object-cover" />
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+
+  <div>
+    <label className="block text-sm font-medium">Add Videos (0–4)</label>
+    <input
+      type="file"
+      accept="video/*"
+      multiple
+      onChange={(e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+        setEditing((prev) => (prev ? { ...prev, videos: [...(prev.videos || []), ...newUrls] } : prev));
+      }}
+    />
+  </div>
+
+  {/* Logo & Feature Image (with X remove) */}
+  <div className="grid md:grid-cols-2 gap-4">
+    <div>
+      <label className="block text-sm font-medium">Client Logo (required)</label>
+      {editing.logo_url ? (
+        <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+          <Image src={editing.logo_url} alt="logo" fill style={{ objectFit: "contain" }} sizes="112px" />
+          <button
+            type="button"
+            aria-label="Remove logo (editing)"
+            onClick={() => setEditing((prev) => (prev ? { ...prev, logo_url: undefined } : prev))}
+            className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+            title="Remove logo"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setEditingLogoUploading(true);
+            try {
+              const url = await uploadFileToServer(file);
+              setEditing((prev) => (prev ? { ...prev, logo_url: url } : prev));
+              setStatus("Logo uploaded (editing)");
+            } catch (err: any) {
+              console.error("Logo upload error:", err);
+              setStatus("Upload failed: " + (err?.message || err));
+            } finally {
+              setEditingLogoUploading(false);
+            }
+          }}
+        />
+      )}
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium">Client Feature Image (optional)</label>
+      {editing.blog_feature_image ? (
+        <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+          <Image src={editing.blog_feature_image} alt="feature" fill style={{ objectFit: "contain" }} sizes="112px" />
+          <button
+            type="button"
+            aria-label="Remove feature image (editing)"
+            onClick={() => setEditing((prev) => (prev ? { ...prev, blog_feature_image: undefined } : prev))}
+            className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+            title="Remove feature image"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setEditingFeatureUploading(true);
+            try {
+              const url = await uploadFileToServer(file);
+              setEditing((prev) => (prev ? { ...prev, blog_feature_image: url } : prev));
+              setStatus("Feature uploaded (editing)");
+            } catch (err: any) {
+              console.error("Feature upload error:", err);
+              setStatus("Upload failed: " + (err?.message || err));
+            } finally {
+              setEditingFeatureUploading(false);
+            }
+          }}
+        />
+      )}
+    </div>
+  </div>
+
+</div>
+                )}
+              </div>
+
+              <div className="p-4 border-t flex justify-end gap-2">
+                <button onClick={() => setEditing(null)} className="px-3 py-1 bg-gray-200 rounded">Cancel</button>
+                <button onClick={() => saveEdit(editing)} className="px-3 py-1 bg-green-600 text-white rounded">Save</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

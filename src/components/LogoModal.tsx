@@ -60,7 +60,12 @@ export default function LogoModal({ open, onClose, item }: Props) {
         {/* Logo */}
         <div className="flex justify-center mb-4">
           <div className="relative w-48 h-20">
-            <Image src={item.src} alt={item.title} fill style={{ objectFit: "contain" }} />
+            <Image
+              src={item.src || "/images/placeholder.png"}
+              alt={item.title || "Client logo"}
+              fill
+              style={{ objectFit: "contain" }}
+            />
           </div>
         </div>
 
