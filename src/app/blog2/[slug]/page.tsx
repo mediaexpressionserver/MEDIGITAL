@@ -37,6 +37,42 @@ async function fetchBlog2AdminRows(): Promise<AnyClient[]> {
   }
 }
 
+/** Canonicalize slugs to a consistent form:
+ *  - String -> lowercase
+ *  - trim
+ *  - replace whitespace with '-'
+ *  - remove characters that commonly break URLs
+ */
+function canonicalSlug(s: any): string {
+  if (s == null) return "";
+  try {
+    const str = String(s);
+    // decode if percent-encoded already (best-effort)
+    let decoded = str;
+    try {
+      decoded = decodeURIComponent(str);
+    } catch {
+      // ignore decode errors, use original string
+      decoded = str;
+    }
+    // lower, trim, replace space groups with dash
+    const cleaned = decoded
+      .toLowerCase()
+      .trim()
+      // normalize punctuation: replace spaces with dashes
+      .replace(/\s+/g, "-")
+      // remove characters that shouldn't be in a slug (keep alnum, dash, underscore)
+      .replace(/[^a-z0-9-_]/g, "")
+      // collapse multiple dashes
+      .replace(/-+/g, "-")
+      // strip leading/trailing dashes
+      .replace(/^-+|-+$/g, "");
+    return cleaned;
+  } catch {
+    return String(s ?? "").toLowerCase().trim();
+  }
+}
+
 export default async function Blog2DetailPage({
   params,
 }: {
@@ -44,6 +80,11 @@ export default async function Blog2DetailPage({
 }) {
   const resolvedParams = await params;
   const slug = String(resolvedParams?.slug ?? "").trim();
+
+  // Debug: show raw incoming slug (helpful in Vercel logs)
+  // Remove these logs after debugging in prod
+  // eslint-disable-next-line no-console
+  console.log("[blog2] incomingSlug raw:", slug);
 
   // primary sources
   const clientsFromHelper: AnyClient[] = (await readClientsData()) ?? [];
@@ -92,11 +133,18 @@ export default async function Blog2DetailPage({
 
   const merged = Array.from(byId.values());
 
-  // robust slug matching: decode incoming slug, normalize to lower-case & trim,
+  // robust slug matching: decode incoming slug, canonicalize,
   // and compare against multiple candidate fields (snake_case/camelCase/raw). Also fall back to id match.
-  const decodedSlug = decodeURIComponent(String(slug || "").trim()).toLowerCase();
+  let decodedCanonical = "";
+  try {
+    decodedCanonical = canonicalSlug(decodeURIComponent(String(slug || "").trim()));
+  } catch {
+    decodedCanonical = canonicalSlug(slug);
+  }
 
-  const normalize = (s: any) => String(s ?? "").toLowerCase().trim();
+  // Debug: show what we will match against
+  // eslint-disable-next-line no-console
+  console.log("[blog2] decodedCanonical:", decodedCanonical);
 
   const client = merged.find((c) => {
     // collect possible slug values from normalized object and raw payload
@@ -114,10 +162,14 @@ export default async function Blog2DetailPage({
       c.id,
       c._raw?._id,
     ]
-      .map((x) => normalize(x))
+      .map((x) => canonicalSlug(x))
       .filter(Boolean);
 
-    return candidateSlugs.includes(decodedSlug) || normalize(c.id) === decodedSlug;
+    // Debug: emit candidate slugs per client id (helpful to inspect mismatches)
+    // eslint-disable-next-line no-console
+    console.log(`[blog2] candidate slugs for client id=${String(c?.id)}:`, candidateSlugs);
+
+    return candidateSlugs.includes(decodedCanonical) || canonicalSlug(c.id) === decodedCanonical;
   });
 
   if (!client) {
@@ -222,18 +274,18 @@ export default async function Blog2DetailPage({
 
         <article className="bg-white rounded-lg shadow overflow-hidden">
           {feature ? (
-  <div className="w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
-    {/*
-      Show image while preserving aspect ratio. `object-contain` will fit the whole
-      image inside the container and leave whitespace (background) if aspect ratios
-      differ. If you prefer the image to be zoomed/cropped to fill the area, change
-      the class on the <img> from `object-contain` to `object-cover`.
-    */}
-    <img src={feature} alt={title} loading="lazy" className="max-w-full max-h-full object-contain" />
-  </div>
-) : (
-  <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">No image</div>
-)}
+            <div className="w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
+              {/*
+                Show image while preserving aspect ratio. `object-contain` will fit the whole
+                image inside the container and leave whitespace (background) if aspect ratios
+                differ. If you prefer the image to be zoomed/cropped to fill the area, change
+                the class on the <img> from `object-contain` to `object-cover`.
+              */}
+              <img src={feature} alt={title} loading="lazy" className="max-w-full max-h-full object-contain" />
+            </div>
+          ) : (
+            <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">No image</div>
+          )}
 
           <div className="p-8">
             <h1 className="text-3xl font-bold mb-4">{title}</h1>
@@ -241,7 +293,7 @@ export default async function Blog2DetailPage({
             {media && media.length > 0 && (
               <section className="mb-6">
                 <h3 className="text-sm text-gray-600 mb-2">Gallery</h3>
-                {/* Client-only gallery wrapper mounts dynamically (ssr:false inside wrapper) updated by nash 1*/}
+                {/* Client-only gallery wrapper mounts dynamically (ssr:false inside wrapper) */}
                 <MediaGalleryClient media={media} />
               </section>
             )}

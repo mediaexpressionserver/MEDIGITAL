@@ -108,6 +108,29 @@ export default function Blog2ListPage() {
     fetchClients();
   }, []);
 
+  // helper: canonicalize slugs for consistent client-side hrefs
+  const canonicalSlug = (s?: string) => {
+    if (!s) return "";
+    try {
+      // try decode if it's encoded already (safe best-effort)
+      let val = s;
+      try {
+        val = decodeURIComponent(s);
+      } catch {
+        val = s;
+      }
+      return String(val)
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-") // spaces -> dashes
+        .replace(/[^a-z0-9-_]/g, "") // keep letters, numbers, dash, underscore
+        .replace(/-+/g, "-") // collapse multiple dashes
+        .replace(/^-+|-+$/g, ""); // trim leading/trailing dashes
+    } catch {
+      return String(s).toLowerCase().trim();
+    }
+  };
+
   // Only show items that actually have blog2 data (prefer blog2Title or blog2Slug)
   const blog2Clients = clients.filter((c) => (c.blog2Title && String(c.blog2Title).trim()) || (c.blog2Slug && String(c.blog2Slug).trim()));
 
@@ -173,7 +196,8 @@ export default function Blog2ListPage() {
   // Shared card component (inline) for consistency between initial & remaining lists
   function Blog2Card({ client }: { client: ClientBlog2 }) {
     const title = pickTitle(client);
-    const slug = pickSlug(client);
+    const rawSlug = pickSlug(client);
+    const slugForHref = canonicalSlug(rawSlug);
     const image = pickImage(client);
     const fullPlain = stripHtml(client.blog2BodyHtml ?? client.blogBodyHtml ?? "");
     const previewText = fullPlain.trim();
@@ -196,15 +220,13 @@ export default function Blog2ListPage() {
         </div>
 
         <div className="p-6 flex flex-col flex-1">
-         
-
           {/* Title + arrow */}
           <div className="flex items-start justify-between gap-4">
             <h3 className="text-2xl font-semibold text-gray-900 leading-tight">{title}</h3>
 
             {/* arrow icon — visible and aligned right */}
             <Link
-              href={`/blog2/${slug}`}
+              href={`/blog2/${encodeURIComponent(slugForHref)}`}
               className="ml-4 inline-flex items-center justify-center p-2 rounded-full text-gray-700 hover:text-black bg-white shadow-sm hover:shadow-md"
               aria-label={`Read ${title}`}
             >
@@ -241,7 +263,7 @@ export default function Blog2ListPage() {
 
             <div>
               {/* small read link (text) */}
-              <Link href={`/blog2/${slug}`} className="text-sm text-orange-600 hover:underline">
+              <Link href={`/blog2/${encodeURIComponent(slugForHref)}`} className="text-sm text-orange-600 hover:underline">
                 Read full Blog
               </Link>
             </div>

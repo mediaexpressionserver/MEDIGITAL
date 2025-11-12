@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import AnimatedSmiley from "@/components/AnimatedSmiley";
 import ServicePillList, { ServiceItem } from "@/components/Servicelist";
 import logoData, { type LogoItem } from "@/data/logoData";
@@ -538,6 +538,30 @@ useEffect(() => {
       alert("⚠️ Error sending message: " + (err?.message || err));
     }
   };
+
+  // scroll-to-top helper (used by the floating button)
+  const scrollToTop = () => {
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      // ignore in non-browser contexts
+    }
+  };
+
+  // show/hide state for the floating Home button
+const [showHomeBtn, setShowHomeBtn] = useState(false);
+
+useEffect(() => {
+  if (typeof window === "undefined") return;
+  const onScroll = () => {
+    // show button when user scrolls down > 120px, hide when near top
+    setShowHomeBtn(window.scrollY > 120);
+  };
+  // initialize state
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+  return () => window.removeEventListener("scroll", onScroll);
+}, []);
 
   // Hide horizontal overflow (only for desktop)
   useEffect(() => {
@@ -1140,6 +1164,18 @@ useEffect(() => {
   ))}
 </div>
         </section>
+
+      {/* Floating scroll-to-top button (mobile) */}
+   {showHomeBtn && (
+  <button
+    type="button"
+    onClick={scrollToTop}
+    aria-label="Scroll to top"
+    className="fixed bottom-6 right-6 z-50 bg-[#EEAA45] text-white px-4 py-2 rounded-full shadow-lg hover:scale-105 transform transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-[#EEAA45]/50 select-none"
+  >
+    <span className="font-semibold text-sm uppercase">Home</span>
+  </button>
+)}
       </div>
     );
   }
@@ -1820,6 +1856,17 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
           height: spacerHeight ? `${spacerHeight}px` : "1600vh",
         }}
       />
+      {/* Floating scroll-to-top button (desktop) */}
+  {showHomeBtn && (
+  <button
+    type="button"
+    onClick={scrollToTop}
+    aria-label="Scroll to top"
+    className="fixed bottom-6 right-6 z-50 bg-[#EEAA45] text-white px-4 py-2 rounded-full shadow-lg hover:scale-105 transform transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-[#EEAA45]/50 select-none"
+  >
+    <span className="font-semibold text-sm uppercase">Home</span>
+  </button>
+)}
     </div>
   );
 };

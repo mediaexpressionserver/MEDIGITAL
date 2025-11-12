@@ -4502,8 +4502,6 @@
     },
     "node_modules/next": {
       "version": "15.5.2",
-      "resolved": "https://registry.npmjs.org/next/-/next-15.5.2.tgz",
-      "integrity": "sha512-H8Otr7abj1glFhbGnvUt3gz++0AF1+QoCXEBmd/6aKbfdFwrn0LpA836Ed5+00va/7HQSDD+mOoVhn3tNy3e/Q==",
       "license": "MIT",
       "dependencies": {
         "@next/env": "15.5.2",
