@@ -1064,7 +1064,7 @@ useEffect(() => {
       </h2>
       <p className="text-white text-sm leading-relaxed max-w-md mx-auto">
         Ready to elevate your brand? Fill our quick <br></br>form, and
-        we&apos;ll connect soon.  Prefer email?<br></br>Reach us at <span className="text-[#EEAA45]">connect@.com</span>
+        we&apos;ll connect soon.  Prefer email?<br></br>Reach us at <Link href="mailto:medigital2000@gmail.com" className="text-[#EEAA45]">medigital2000@gmail.com</Link>
       </p>
     </div>
 
@@ -1142,7 +1142,7 @@ useEffect(() => {
   {[
     { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
     { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
-    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital" }, // update if needed
+    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" }, // update if needed
     { src: "/images/Twitter.png", alt: "Twitter", href: "https://twitter.com" }, // replace with actual link if available
     { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
   ].map((social, index) => (
@@ -1223,7 +1223,7 @@ return (
   {[
     { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
     { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
-    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital" }, // optional if you have one
+    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" }, // optional if you have one
     { src: "/images/Twitter.png", alt: "Twitter", href: "https://twitter.com" }, // replace if active
     { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
   ].map((social, index) => (
@@ -1732,7 +1732,8 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
                 <p className="text-white text-sm leading-relaxed">
                   Ready to elevate your brand? Fill our quick form, and<br />
                   we&apos;ll connect soon. Prefer email? Reach us at<br />
-                  connect@.com
+                   <Link href="mailto:medigital2000@gmail.com" className="text-[#EEAA45]">medigital2000@gmail.com</Link>
+      
                 </p>
               </div>
             </div>
@@ -1824,7 +1825,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   {[
     { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
     { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
-    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital" }, // optional, replace with real link if available
+    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" }, // optional, replace with real link if available
     { src: "/images/Twitter.png", alt: "Twitter", href: "https://twitter.com" }, // replace if Medigital has an official Twitter/X
     { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
   ].map((social, index) => (

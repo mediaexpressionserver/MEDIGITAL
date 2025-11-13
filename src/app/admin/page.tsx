@@ -38,7 +38,7 @@ export default function AdminPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [editing, setEditing] = useState<Client | null>(null);
 
-  /* ----- Blog1 create states ----- */
+  /* ----- Client create states ----- */
   const [clientName1, setClientName1] = useState("");
   const [blogTitle1, setBlogTitle1] = useState("");
   const [blogBody1, setBlogBody1] = useState(""); // HTML
@@ -56,7 +56,7 @@ export default function AdminPage() {
   const [uploadingLogo1, setUploadingLogo1] = useState(false);
   const [uploadingFeature1, setUploadingFeature1] = useState(false);
 
-  /* ----- Blog2 create states (completely separate) ----- */
+  /* ----- Blog create states (completely separate) ----- */
   const [clientName2, setClientName2] = useState("");
   const [blogTitle2, setBlogTitle2] = useState("");
   const [blogBody2, setBlogBody2] = useState(""); // HTML for blog2
@@ -80,8 +80,8 @@ export default function AdminPage() {
   const [editingLogoPreview, setEditingLogoPreview] = useState<string | null>(null);
   const [editingFeaturePreview, setEditingFeaturePreview] = useState<string | null>(null);
   const [editingVideoPreview, setEditingVideoPreview] = useState<string | null>(null);
-  const [editingBlog2FeatureUploading, setEditingBlog2FeatureUploading] = useState(false);
-  const [editingBlog2FeaturePreview, setEditingBlog2FeaturePreview] = useState<string | null>(null);
+  const [editingBlogFeatureUploading, setEditingBlogFeatureUploading] = useState(false);
+  const [editingBlogFeaturePreview, setEditingBlogFeaturePreview] = useState<string | null>(null);
 
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
@@ -249,7 +249,7 @@ export default function AdminPage() {
     setEditingLogoPreview(i.logo_url ?? i.logoUrl ?? i.logo ?? null);
     setEditingFeaturePreview(i.blog_feature_image ?? i.blogFeatureImage ?? i.feature_image ?? null);
     setEditingVideoPreview((i.videos && i.videos[0]) ?? null);
-    setEditingBlog2FeaturePreview(i.blog2_feature_image ?? i.blog2FeatureImage ?? null);
+    setEditingBlogFeaturePreview(i.blog2_feature_image ?? i.blog2FeatureImage ?? null);
   }
 
   async function readResponse(res: Response) {
@@ -308,8 +308,8 @@ export default function AdminPage() {
 
   /* ------------------ create handlers (separate) ------------------ */
 
-  // Create Blog1 only (does NOT send blog2 fields)
-  async function handleCreateBlog1(e?: React.FormEvent) {
+  // Create Client only (does NOT send blog2 fields)
+  async function handleCreateClient(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!clientName1.trim() || !blogTitle1.trim()) {
       setStatus("Please fill required fields (client name & blog title).");
@@ -320,7 +320,7 @@ export default function AdminPage() {
       return;
     }
 
-    setStatus("Creating Blog 1...");
+    setStatus("Creating Client Case Study...");
     setUploadingFiles(true);
 
     try {
@@ -353,8 +353,8 @@ export default function AdminPage() {
       const { ok, json, text, status: st } = await readResponse(res);
       if (!ok) throw new Error((json && (json.error || json.message)) || text || `Server returned ${st}`);
 
-      setStatus("✅ Created Blog 1");
-      // reset Blog1 form
+      setStatus("✅ Created Client Case Study");
+      // reset Client form
       setClientName1("");
       setBlogTitle1("");
       setBlogBody1("");
@@ -369,22 +369,22 @@ export default function AdminPage() {
       setFeatureImageUrl1("");
       await fetchList();
     } catch (err: any) {
-      console.error("handleCreateBlog1 error:", err);
+      console.error("handleCreateClient error:", err);
       setStatus("Create failed: " + (err?.message || "unknown"));
     } finally {
       setUploadingFiles(false);
     }
   }
 
-  // Create Blog2 only (does NOT send blog1 fields)
-  async function handleCreateBlog2(e?: React.FormEvent) {
+  // Create Blog only (does NOT send blog1 fields)
+  async function handleCreateBlog(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!clientName2.trim() || !blogTitle2.trim()) {
-      setStatus("Please fill required fields for Blog 2 (client & title).");
+      setStatus("Please fill required fields for Blog (client & title).");
       return;
     }
 
-    setStatus("Creating Blog 2...");
+    setStatus("Creating Blog...");
     setUploadingFiles(true);
 
     try {
@@ -413,7 +413,7 @@ export default function AdminPage() {
       };
 
       // <<< DEBUG: print payload so you can confirm what's actually being sent
-      console.debug("[Admin] handleCreateBlog2 payload:", payload);
+      console.debug("[Admin] handleCreateBlog payload:", payload);
 
       const res = await fetch("/api/admin/clients_blog2", {
         method: "POST",
@@ -427,8 +427,8 @@ export default function AdminPage() {
       try {
         jsonBody = rawText ? JSON.parse(rawText) : null;
       } catch {}
-      console.debug("[Admin] handleCreateBlog2 response status:", res.status, res.statusText);
-      console.debug("[Admin] handleCreateBlog2 response body:", rawText, jsonBody);
+      console.debug("[Admin] handleCreateBlog response status:", res.status, res.statusText);
+      console.debug("[Admin] handleCreateBlog response body:", rawText, jsonBody);
 
       if (!res.ok) {
         // try to show server-provided message when possible
@@ -436,8 +436,8 @@ export default function AdminPage() {
         throw new Error(serverMsg);
       }
 
-      setStatus("✅ Created Blog 2");
-      // reset Blog2 form
+      setStatus("✅ Created Blog");
+      // reset Blog form
       setClientName2("");
       setBlogTitle2("");
       setBlogBody2("");
@@ -451,9 +451,9 @@ export default function AdminPage() {
       setFeatureImageUrl2("");
       await fetchList();
     } catch (err: any) {
-      console.error("handleCreateBlog2 error:", err);
+      console.error("handleCreateBlog error:", err);
       // make UI error include the server message if we have one
-      setStatus("Create Blog2 failed: " + (err?.message || "unknown") + " — check console/network tab for full response.");
+      setStatus("Create Blog failed: " + (err?.message || "unknown") + " — check console/network tab for full response.");
     } finally {
       setUploadingFiles(false);
     }
@@ -474,7 +474,7 @@ export default function AdminPage() {
       });
       return urls;
     });
-    setStatus(arr.length ? `${arr.length} image(s) selected for Blog1` : null);
+    setStatus(arr.length ? `${arr.length} image(s) selected for Client` : null);
   }
 
   // UPDATED: upload videos immediately and replace blob previews with server URLs
@@ -525,7 +525,7 @@ export default function AdminPage() {
       });
       return urls;
     });
-    setStatus(arr.length ? `${arr.length} image(s) selected for Blog2` : null);
+    setStatus(arr.length ? `${arr.length} image(s) selected for Blog` : null);
   }
 
   // UPDATED: upload videos immediately and replace blob previews with server URLs
@@ -619,26 +619,26 @@ export default function AdminPage() {
     }
   }
 
-  async function handleEditBlog2FileInput(e: React.ChangeEvent<HTMLInputElement>, type: "blog2Feature" | "blog2Video") {
+  async function handleEditBlogFileInput(e: React.ChangeEvent<HTMLInputElement>, type: "blog2Feature" | "blog2Video") {
     const file = e.target.files?.[0];
     if (!file || !editing) return;
     try {
-      if (type === "blog2Feature") setEditingBlog2FeatureUploading(true);
+      if (type === "blog2Feature") setEditingBlogFeatureUploading(true);
       else setEditingVideoUploading(true);
       setStatus(null);
       const url = await uploadFileToServer(file);
       if (type === "blog2Feature") {
-        setEditingBlog2FeaturePreview(url);
+        setEditingBlogFeaturePreview(url);
         setEditing((prev) => (prev ? { ...prev, blog2_feature_image: url } : prev));
       } else {
         setEditing((prev) => (prev ? { ...prev, blog2_videos: [url, ...(prev.blog2_videos ?? []).slice(1)] } : prev));
       }
       setStatus("Uploaded blog2 file");
     } catch (err: any) {
-      console.error("handleEditBlog2FileInput error:", err);
+      console.error("handleEditBlogFileInput error:", err);
       setStatus("Upload failed: " + (err?.message || "unknown"));
     } finally {
-      if (type === "blog2Feature") setEditingBlog2FeatureUploading(false);
+      if (type === "blog2Feature") setEditingBlogFeatureUploading(false);
       else setEditingVideoUploading(false);
     }
   }
@@ -683,7 +683,7 @@ export default function AdminPage() {
       setEditingLogoPreview(null);
       setEditingFeaturePreview(null);
       setEditingVideoPreview(null);
-      setEditingBlog2FeaturePreview(null);
+      setEditingBlogFeaturePreview(null);
       setStatus("Saved ✅");
       await fetchList();
     } catch (err: any) {
@@ -705,11 +705,11 @@ export default function AdminPage() {
       <div className="max-w-6xl mx-auto p-6 space-y-8">
         <h1 className="text-2xl font-bold mb-4">Admin — Manage Clients & Blogs</h1>
 
-        {/* ---------- CREATE PANELS: Blog1 (left) + Blog2 (right) ---------- */}
+        {/* ---------- CREATE PANELS: Client (left) + Blog (right) ---------- */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Blog 1 create */}
-          <form onSubmit={async (e) => { e.preventDefault(); await handleCreateBlog1(); }} className="bg-white shadow p-6 rounded space-y-4">
-            <h2 className="font-semibold text-lg">Create — Blog 1</h2>
+          {/* Client Case Study create */}
+          <form onSubmit={async (e) => { e.preventDefault(); await handleCreateClient(); }} className="bg-white shadow p-6 rounded space-y-4">
+            <h2 className="font-semibold text-lg">Create Client Case study</h2>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -790,7 +790,7 @@ export default function AdminPage() {
                       try {
                         const url = await uploadFileToServer(file);
                         setLogoUrl1(url);
-                        setStatus("Logo uploaded (Blog1)");
+                        setStatus("Logo uploaded (Client)");
                       } catch (err: any) {
                         console.error("Logo upload error:", err);
                         setStatus("Upload failed: " + (err?.message || err));
@@ -829,7 +829,7 @@ export default function AdminPage() {
                       try {
                         const url = await uploadFileToServer(file);
                         setFeatureImageUrl1(url);
-                        setStatus("Feature uploaded (Blog1)");
+                        setStatus("Feature uploaded (Client)");
                       } catch (err: any) {
                         console.error("Feature upload error:", err);
                         setStatus("Upload failed: " + (err?.message || err));
@@ -844,14 +844,14 @@ export default function AdminPage() {
 
             <div className="flex justify-end">
               <button type="submit" disabled={uploadingFiles} className="px-4 py-2 bg-orange-500 text-white rounded">
-                {uploadingFiles ? "Creating…" : "Create Blog 1"}
+                {uploadingFiles ? "Creating…" : "Create Client Case Study"}
               </button>
             </div>
           </form>
 
-          {/* Blog 2 create */}
-          <form onSubmit={async (e) => { e.preventDefault(); await handleCreateBlog2(); }} className="bg-white shadow p-6 rounded space-y-4">
-            <h2 className="font-semibold text-lg">Create — Blog 2</h2>
+          {/* Blog create */}
+          <form onSubmit={async (e) => { e.preventDefault(); await handleCreateBlog(); }} className="bg-white shadow p-6 rounded space-y-4">
+            <h2 className="font-semibold text-lg">Create — Blog</h2>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -867,8 +867,8 @@ export default function AdminPage() {
 
             <div>
               <label className="block text-sm font-medium">Blog Body *</label>
-              <SimpleEditor value={blogBody2} onChange={(html) => setBlogBody2(html)} placeholder="Start typing Blog2..." />
-              <div className="mt-2 text-xs text-gray-500">Formatting toolbar (B I U, lists, links) shown by the editor.</div>
+              <SimpleEditor value={blogBody2} onChange={(html) => setBlogBody2(html)} placeholder="Start typing Blog..." />
+              
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
@@ -933,7 +933,7 @@ export default function AdminPage() {
                       try {
                         const url = await uploadFileToServer(file);
                         setLogoUrl2(url);
-                        setStatus("Logo uploaded (Blog2)");
+                        setStatus("Logo uploaded (Blog)");
                       } catch (err: any) {
                         console.error("Logo upload error:", err);
                         setStatus("Upload failed: " + (err?.message || err));
@@ -972,7 +972,7 @@ export default function AdminPage() {
                       try {
                         const url = await uploadFileToServer(file);
                         setFeatureImageUrl2(url);
-                        setStatus("Feature uploaded (Blog2)");
+                        setStatus("Feature uploaded (Blog)");
                       } catch (err: any) {
                         console.error("Feature upload error:", err);
                         setStatus("Upload failed: " + (err?.message || err));
@@ -987,13 +987,13 @@ export default function AdminPage() {
 
             <div className="flex justify-end">
               <button type="submit" disabled={uploadingFiles} className="px-4 py-2 bg-sky-600 text-white rounded">
-                {uploadingFiles ? "Creating…" : "Create Blog 2"}
+                {uploadingFiles ? "Creating…" : "Create Blog"}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Existing clients lists (separated into Blog1 and Blog2) */}
+        {/* Existing clients lists (separated into Client and Blog) */}
         <div>
           <h2 className="font-semibold text-lg mb-2">Existing Clients</h2>
 
@@ -1036,7 +1036,7 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Blog2 list */}
+        {/* Blog list */}
         <div>
           <h2 className="font-semibold text-lg mb-2">Existing Blogs</h2>
 
@@ -1093,7 +1093,7 @@ export default function AdminPage() {
               {/* inside the existing modal: replace the content of the scrollable area with this */}
               <div className="p-4 overflow-auto" style={{ maxHeight: "calc(80vh - 112px)" }}>
                 {/*
-                  Show a simplified Blog2-only editor when editing a clients_blog2 row.
+                  Show a simplified Blog-only editor when editing a clients_blog2 row.
                   Otherwise show the full editor (old behavior).
                 */}
                 {editing.source === "clients_blog2" ? (
@@ -1122,7 +1122,7 @@ export default function AdminPage() {
                         <SimpleEditor
                           value={(editing as any).blog2_body_html ?? ""}
                           onChange={(html) => setEditing((prev) => (prev ? { ...prev, blog2_body_html: html } : prev))}
-                          placeholder="Start typing Blog2..."
+                          placeholder="Start typing Blog..."
                         />
                       </div>
                     </div>
@@ -1266,7 +1266,7 @@ export default function AdminPage() {
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
-                              setEditingBlog2FeatureUploading(true);
+                              setEditingBlogFeatureUploading(true);
                               try {
                                 const url = await uploadFileToServer(file);
                                 setEditing((prev) => (prev ? { ...prev, blog2_feature_image: url } : prev));
@@ -1275,7 +1275,7 @@ export default function AdminPage() {
                                 console.error("Feature upload error:", err);
                                 setStatus("Upload failed: " + (err?.message || err));
                               } finally {
-                                setEditingBlog2FeatureUploading(false);
+                                setEditingBlogFeatureUploading(false);
                               }
                             }}
                           />
@@ -1284,8 +1284,8 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ) : (
-                  /* ---------- existing full editor for Blog1 rows (unchanged) ---------- */
-                  /* ---------- REPLACE Blog1 editor (inside edit modal) with this minimal + logo/feature + Blog2 block ---------- */
+                  /* ---------- existing full editor for Client rows (unchanged) ---------- */
+                  /* ---------- REPLACE Client editor (inside edit modal) with this minimal + logo/feature + Blog block ---------- */
 <div className="space-y-4">
 
   <div>
