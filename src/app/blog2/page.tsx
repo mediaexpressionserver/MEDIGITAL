@@ -283,7 +283,7 @@ export default function Blog2ListPage() {
         <Header />
 
         <section className="text-center mb-10">
-          <h1 className="text-4xl font-bold mb-3 text-white">Our Clients&apos; Stories — Blog2</h1>
+          <h1 className="text-4xl font-bold mb-3 text-white">Our Clients&apos; Stories — Blog</h1>
           <p className="text-gray-200 max-w-xl mx-auto">Explore how our clients achieved success through MeDigital.</p>
         </section>
 

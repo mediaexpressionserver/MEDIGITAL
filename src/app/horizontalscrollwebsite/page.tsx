@@ -1575,7 +1575,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
 
         {/* Right: Text side */}
         
-        <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[400px] translate-y-[-150px]">
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[350px] translate-y-[-150px]">
           <div className="mb-10">
             <h2 className="text-[220px] font-extrabold text-[#EEAA45] leading-tight translate-x-[-160px] translate-y-[230px]">4</h2>
             <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold text-[#EEAA45] leading-tight">Daring<br />Steps.</h2>
@@ -1638,7 +1638,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
 
   <div className="absolute inset-0 rounded-lg flex flex-col justify-center items-start p-8 translate-y-[-150px] translate-x-[150px] z-20 pointer-events-none">
     <h2 className="text-5xl font-bold text-[#EEAA45] mb-4 pointer-events-auto">
-      Our<br />Portfolio
+      Our Portfolio
     </h2>
     <h1 className="text-2xl font-semibold text-[#EEAA45] mb-2 pointer-events-auto">
       We Advertise.<br />We Amaze.
@@ -1651,7 +1651,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   </div>
 
   {/* ABSOLUTE full-bleed carousel at the bottom of Section 6 */}
- <div className="absolute left-0 right-0 bottom-0 z-30 translate-y-[-200px]">
+ <div className="absolute left-0 right-0 bottom-[-60] z-30 translate-y-[-200px]">
   <div className="w-full bg-white shadow-xl h-[200px] flex items-center justify-center">
     {/* You can adjust h-[400px] → 300px / 500px depending on your design */}
     <div className="w-full max-w-none">

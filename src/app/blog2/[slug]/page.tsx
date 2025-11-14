@@ -11,7 +11,7 @@ import Image from "next/image";
 import BackButtonClient from "./BackButtonClient";
 
 export const metadata = {
-  title: "Blog2",
+  title: "Blog",
 };
 
 type AnyClient = Record<string, any>;
