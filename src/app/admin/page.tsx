@@ -42,7 +42,7 @@ export default function AdminPage() {
   const [clientName1, setClientName1] = useState("");
   const [blogTitle1, setBlogTitle1] = useState("");
   const [blogBody1, setBlogBody1] = useState(""); // HTML
-  const [ctaText1, setCtaText1] = useState("Read full blog");
+  const [ctaText1, setCtaText1] = useState("Read full Case study");
 
   const fileInputRef1 = useRef<HTMLInputElement | null>(null);
   const videoInputRef1 = useRef<HTMLInputElement | null>(null);
@@ -155,7 +155,7 @@ export default function AdminPage() {
           blog_slug: item.blog_slug ?? item.blogSlug ?? item.slug ?? "",
           blog_body_html: item.blog_body_html ?? item.blogBodyHtml ?? item.body ?? item.blogBody ?? "",
           blog_feature_image: item.blog_feature_image ?? item.blogFeatureImage ?? item.feature_image ?? "",
-          cta_text: item.cta_text ?? item.ctaText ?? "Read full blog",
+          cta_text: item.cta_text ?? item.ctaText ?? "Read full Case study",
           images: item.images ?? item.imageUrls ?? undefined,
           videos: item.videos ?? item.videoUrls ?? item.videos_urls ?? undefined,
           blog2_title: item.blog2_title ?? item.blog2Title ?? undefined,
@@ -358,7 +358,7 @@ export default function AdminPage() {
       setClientName1("");
       setBlogTitle1("");
       setBlogBody1("");
-      setCtaText1("Read full blog");
+      setCtaText1("Read full Case study");
       setSelectedFiles1([]);
       setPreviews1([]);
       setSelectedVideos1([]);

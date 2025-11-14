@@ -1575,7 +1575,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
 
         {/* Right: Text side */}
         
-        <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[350px] translate-y-[-150px]">
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[330px] translate-y-[-150px]">
           <div className="mb-10">
             <h2 className="text-[220px] font-extrabold text-[#EEAA45] leading-tight translate-x-[-160px] translate-y-[230px]">4</h2>
             <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold text-[#EEAA45] leading-tight">Daring<br />Steps.</h2>
