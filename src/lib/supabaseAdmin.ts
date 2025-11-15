@@ -1,27 +1,83 @@
 // src/lib/supabaseAdmin.ts
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * IMPORTANT:
- * - NEXT_PUBLIC_SUPABASE_URL must be set (your Supabase project URL).
- * - SUPABASE_SERVICE_ROLE_KEY must be set (the service_role key from Supabase).
+ * Lazy, robust Supabase admin client.
  *
- * Put these in .env.local for local dev:
- * NEXT_PUBLIC_SUPABASE_URL=https://....supabase.co
- * SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJI...
+ * Exports:
+ *  - getSupabaseAdmin(): SupabaseClient  -> call to get real client
+ *  - supabaseAdmin (exported const)      -> a Proxy that forwards calls to the real client (backwards-compatible)
  *
- * After adding env vars, restart the Next.js server.
+ * Environment variables expected:
+ *  - SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL
+ *  - SUPABASE_SERVICE_ROLE_KEY
+ *
+ * If env vars are missing, the module logs a helpful message and throws at runtime when the client is first used.
  */
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const serviceKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE ?? "";
 
-if (!url || !key) {
-  throw new Error(
-    "supabaseAdmin: Missing environment variables NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
-  );
+let _client: SupabaseClient | null = null;
+
+function createSupabaseClient(): SupabaseClient {
+  if (_client) return _client;
+
+  if (!url || !serviceKey) {
+    // Helpful server-side error for logs so you can see what's missing on Vercel
+    // eslint-disable-next-line no-console
+    console.error(
+      "[supabaseAdmin] Missing Supabase credentials. Required: SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY.",
+      {
+        SUPABASE_URL: Boolean(process.env.SUPABASE_URL),
+        NEXT_PUBLIC_SUPABASE_URL: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+        SUPABASE_SERVICE_ROLE_KEY: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+        SUPABASE_SERVICE_ROLE: Boolean(process.env.SUPABASE_SERVICE_ROLE),
+      }
+    );
+    throw new Error(
+      "supabaseAdmin: Missing environment variables. Set SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY."
+    );
+  }
+
+  _client = createClient(url, serviceKey, {
+    auth: { persistSession: false },
+    global: { fetch: globalThis.fetch.bind(globalThis) as any },
+  });
+
+  return _client;
 }
 
-export const supabaseAdmin = createClient(url, key, {
-  auth: { persistSession: false },
-});
+/** Backwards-compatible accessor; safe to call anywhere. Throws if env missing. */
+export function getSupabaseAdmin(): SupabaseClient {
+  return createSupabaseClient();
+}
+
+/**
+ * Proxy that forwards any property access / method call to the real supabase client.
+ * This lets existing code that imports { supabaseAdmin } continue to call supabaseAdmin.from(...)
+ */
+const handler: ProxyHandler<any> = {
+  get(_, prop) {
+    const client = createSupabaseClient();
+    // forward the property (function or value)
+    // @ts-ignore
+    const value = (client as any)[prop];
+    // If it's a function, bind it to client so `this` works correctly
+    if (typeof value === "function") return value.bind(client);
+    return value;
+  },
+  set(_, prop, value) {
+    const client = createSupabaseClient();
+    // @ts-ignore
+    (client as any)[prop] = value;
+    return true;
+  },
+  has(_, prop) {
+    const client = createSupabaseClient();
+    return prop in (client as any);
+  },
+};
+
+export const supabaseAdmin: SupabaseClient = new Proxy({}, handler) as unknown as SupabaseClient;
