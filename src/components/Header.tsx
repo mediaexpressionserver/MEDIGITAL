@@ -315,20 +315,7 @@ const Header: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-3">
-          <button
-            className="hidden md:inline-flex bg-[#E29A4D] hover:bg-[#ffae54] text-black font-semibold text-xs px-4 py-2 rounded-md transition-all duration-300"
-            onClick={() => {
-              if (pathname === "/") {
-                smoothScrollTo("#reachusdesktop");
-              } else {
-                router.push("/#reachusdesktop");
-                setTimeout(() => smoothScrollTo("#reachusdesktop"), SCROLL_DELAY_AFTER_NAV_MS);
-              }
-            }}
-            aria-label="Contact us"
-          >
-            Contact Us
-          </button>
+          
 
           <button
             ref={toggleButtonRef}
@@ -391,20 +378,7 @@ const Header: React.FC = () => {
           </nav>
 
           <div className="pt-2">
-            <button
-              className="w-full inline-flex justify-center items-center gap-2 px-4 py-2 bg-[#E29A4D] text-black font-semibold rounded-md hover:bg-[#ffae54] transition"
-              onClick={() => {
-                setMobileOpen(false);
-                if (pathname === "/") {
-                  smoothScrollTo("#reachusdesktop");
-                } else {
-                  router.push("/#reachusdesktop");
-                  setTimeout(() => smoothScrollTo("#reachusdesktop"), SCROLL_DELAY_AFTER_NAV_MS);
-                }
-              }}
-            >
-              Contact Us
-            </button>
+            
           </div>
         </div>
       </div>

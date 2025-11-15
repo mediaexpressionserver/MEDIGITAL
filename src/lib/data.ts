@@ -114,7 +114,7 @@ function normalizeRow(row: Record<string, any>) {
     blog2BodyHtml: row.blog2_body_html ?? row.blog2BodyHtml ?? null,
     blog2FeatureImageUrl: blog2FeatureImageUrl,
     // arrays
-    ctaText: row.cta_text ?? row.ctaText ?? "Read full blog",
+    ctaText: row.cta_text ?? row.ctaText ?? "Read full Case Study",
     createdAt: row.created_at ?? row.createdAt ?? null,
     images,
     videos,

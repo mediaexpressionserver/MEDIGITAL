@@ -15,7 +15,7 @@ export default function AdminPage() {
   const [clientName, setClientName] = useState("");
   const [blogTitle, setBlogTitle] = useState("");
   const [blogBodyHtml, setBlogBodyHtml] = useState("");
-  const [ctaText, setCtaText] = useState("Read full blog");
+  const [ctaText, setCtaText] = useState("Read full Case study");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [featureFile, setFeatureFile] = useState<File | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -86,7 +86,7 @@ export default function AdminPage() {
       setBlogBodyHtml("");
       setLogoFile(null);
       setFeatureFile(null);
-      setCtaText("Read full blog");
+      setCtaText("Read full Case study");
     } catch (err: any) {
       console.error(err);
       setStatus(`❌ ${err.message || "Error saving data"}`);

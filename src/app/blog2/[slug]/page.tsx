@@ -6,8 +6,6 @@ import Header from "@/components/Header";
 import { readClientsData } from "@/lib/data";
 import MediaGalleryClient from "@/components/MediaGallery"; // client wrapper (ssr:false inside)
 import Image from "next/image";
-
-// Import the client wrapper that handles the sessionStorage flag and history.back()
 import BackButtonClient from "./BackButtonClient";
 
 export const metadata = {
@@ -16,56 +14,63 @@ export const metadata = {
 
 type AnyClient = Record<string, any>;
 
+/**
+ * Robust server-side fetch for admin rows.
+ * Uses a proper base URL derived from environment variables if available.
+ * Falls back to localhost for local testing.
+ */
 async function fetchBlog2AdminRows(): Promise<AnyClient[]> {
-  const base =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
+  // Prefer an explicit public base URL if provided, otherwise try VERCEL_URL, otherwise localhost
+  const envBase =
+    process.env.NEXT_PUBLIC_BASE_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ??
     "http://localhost:3000";
 
-  const url = `${base.replace(/\/$/, "")}/api/admin/clients_blog2`;
+  const url = (() => {
+    try {
+      return new URL("/api/admin/clients_blog2", envBase).toString();
+    } catch {
+      // as a last resort, build by concatenation (shouldn't normally be needed)
+      return `${String(envBase).replace(/\/$/, "")}/api/admin/clients_blog2`;
+    }
+  })();
 
   try {
     const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      // eslint-disable-next-line no-console
+      console.error("[fetchBlog2AdminRows] non-ok status", res.status, "url:", url);
+      return [];
+    }
     const json = await res.json();
     if (Array.isArray(json)) return json;
     if (json && Array.isArray(json.data)) return json.data;
     if (json && Array.isArray(json.clients)) return json.clients;
     return [];
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[fetchBlog2AdminRows] exception fetching", url, err);
     return [];
   }
 }
 
-/** Canonicalize slugs to a consistent form:
- *  - String -> lowercase
- *  - trim
- *  - replace whitespace with '-'
- *  - remove characters that commonly break URLs
- */
+/** Canonicalize slugs to consistent form (matches client-side canonicalization) */
 function canonicalSlug(s: any): string {
   if (s == null) return "";
   try {
     const str = String(s);
-    // decode if percent-encoded already (best-effort)
     let decoded = str;
     try {
       decoded = decodeURIComponent(str);
     } catch {
-      // ignore decode errors, use original string
       decoded = str;
     }
-    // lower, trim, replace space groups with dash
     const cleaned = decoded
       .toLowerCase()
       .trim()
-      // normalize punctuation: replace spaces with dashes
       .replace(/\s+/g, "-")
-      // remove characters that shouldn't be in a slug (keep alnum, dash, underscore)
       .replace(/[^a-z0-9-_]/g, "")
-      // collapse multiple dashes
       .replace(/-+/g, "-")
-      // strip leading/trailing dashes
       .replace(/^-+|-+$/g, "");
     return cleaned;
   } catch {
@@ -79,18 +84,21 @@ export default async function Blog2DetailPage({
   params: { slug: string } | Promise<{ slug: string }>;
 }) {
   const resolvedParams = await params;
-  const slug = String(resolvedParams?.slug ?? "").trim();
+  const rawSlug = String(resolvedParams?.slug ?? "").trim();
 
-  // Debug: show raw incoming slug (helpful in Vercel logs)
-  // Remove these logs after debugging in prod
+  // Debug logs (remove after verification)
   // eslint-disable-next-line no-console
-  console.log("[blog2] incomingSlug raw:", slug);
+  console.log("[blog2] incomingSlug raw:", rawSlug);
 
-  // primary sources
+  // Fetch primary sources
   const clientsFromHelper: AnyClient[] = (await readClientsData()) ?? [];
   const blog2Rows: AnyClient[] = await fetchBlog2AdminRows();
 
-  // merge/normalize — keep semantics same as before
+  // Debug: number of rows fetched (remove after debugging)
+  // eslint-disable-next-line no-console
+  console.log("[blog2] fetched blog2Rows count:", Array.isArray(blog2Rows) ? blog2Rows.length : typeof blog2Rows);
+
+  // Merge/normalize both sources
   const byId = new Map<string, AnyClient>();
   const normalizeId = (raw: AnyClient, idx: number) =>
     String(
@@ -133,21 +141,14 @@ export default async function Blog2DetailPage({
 
   const merged = Array.from(byId.values());
 
-  // robust slug matching: decode incoming slug, canonicalize,
-  // and compare against multiple candidate fields (snake_case/camelCase/raw). Also fall back to id match.
-  let decodedCanonical = "";
-  try {
-    decodedCanonical = canonicalSlug(decodeURIComponent(String(slug || "").trim()));
-  } catch {
-    decodedCanonical = canonicalSlug(slug);
-  }
+  // canonicalize incoming slug
+  const decodedCanonical = canonicalSlug(rawSlug);
 
-  // Debug: show what we will match against
+  // Debug
   // eslint-disable-next-line no-console
   console.log("[blog2] decodedCanonical:", decodedCanonical);
 
   const client = merged.find((c) => {
-    // collect possible slug values from normalized object and raw payload
     const candidateSlugs = [
       c.blog2_slug,
       c.blog2Slug,
@@ -165,7 +166,6 @@ export default async function Blog2DetailPage({
       .map((x) => canonicalSlug(x))
       .filter(Boolean);
 
-    // Debug: emit candidate slugs per client id (helpful to inspect mismatches)
     // eslint-disable-next-line no-console
     console.log(`[blog2] candidate slugs for client id=${String(c?.id)}:`, candidateSlugs);
 
@@ -178,7 +178,7 @@ export default async function Blog2DetailPage({
         <Header />
         <div className="max-w-screen-md mx-auto p-8 text-center">
           <h1 className="text-2xl font-semibold">Not found</h1>
-          <p className="text-gray-600 mt-2">No blog found for slug: {slug}</p>
+          <p className="text-gray-600 mt-2">No blog found for slug: {rawSlug}</p>
         </div>
       </main>
     );
@@ -203,7 +203,6 @@ export default async function Blog2DetailPage({
     client.blogBodyHtml ??
     "";
 
-  // images: prefer blog2 images then fallbacks
   const images: string[] =
     (Array.isArray(client.blog2_images) && client.blog2_images.length > 0
       ? client.blog2_images
@@ -226,7 +225,6 @@ export default async function Blog2DetailPage({
     client.blogFeatureImage ??
     null;
 
-  // videos normalization
   const videosRaw =
     client.blog2_videos ?? client.blog2Videos ?? client._raw?.blog2_videos ?? client._raw?.blog2Videos ?? [];
   const videos: string[] = Array.isArray(videosRaw)
@@ -241,20 +239,10 @@ export default async function Blog2DetailPage({
       })()
     : [];
 
-  // cap to a few items to reduce DOM
   const safeImages = Array.isArray(images) ? images.slice(0, 6) : [];
   const safeVideos = Array.isArray(videos) ? videos.slice(0, 6) : [];
   const media =
     [...safeImages.map((src: string) => ({ type: "image" as const, src, alt: title })), ...safeVideos.map((src: string) => ({ type: "video" as const, src, alt: title }))];
-
-  const blog2Slug =
-    client.blog2_slug ??
-    client.blog2Slug ??
-    client._raw?.blog2_slug ??
-    client._raw?.blog2Slug ??
-    client.blog_slug ??
-    client.blogSlug ??
-    "";
 
   // keep background as CSS image for faster initial paint
   const bgStyle: React.CSSProperties = {
@@ -267,20 +255,12 @@ export default async function Blog2DetailPage({
     <main className="relative min-h-screen w-full bg-fixed" style={bgStyle}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative z-10 max-w-screen-xl mx-auto px-6 py-16">
-        {/* Back button client (client component) */}
         <BackButtonClient />
-
         <Header />
 
         <article className="bg-white rounded-lg shadow overflow-hidden">
           {feature ? (
             <div className="w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
-              {/*
-                Show image while preserving aspect ratio. `object-contain` will fit the whole
-                image inside the container and leave whitespace (background) if aspect ratios
-                differ. If you prefer the image to be zoomed/cropped to fill the area, change
-                the class on the <img> from `object-contain` to `object-cover`.
-              */}
               <img src={feature} alt={title} loading="lazy" className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
@@ -293,7 +273,6 @@ export default async function Blog2DetailPage({
             {media && media.length > 0 && (
               <section className="mb-6">
                 <h3 className="text-sm text-gray-600 mb-2">Gallery</h3>
-                {/* Client-only gallery wrapper mounts dynamically (ssr:false inside wrapper) */}
                 <MediaGalleryClient media={media} />
               </section>
             )}

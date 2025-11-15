@@ -71,7 +71,7 @@ function normalizeRow(row: Record<string, any>) {
     blog2_feature_image: blog2Feature,
     blog2_images: blog2Images,
     blog2_videos: blog2Videos,
-    cta_text: row.cta_text ?? row.ctaText ?? "Read full blog",
+    cta_text: row.cta_text ?? row.ctaText ?? "Read full Case study",
     created_at: row.created_at ?? row.createdAt ?? null,
     body_data: row.body_data ?? row.bodyData ?? null,
     raw: row,
