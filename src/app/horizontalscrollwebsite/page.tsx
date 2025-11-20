@@ -1142,8 +1142,7 @@ useEffect(() => {
   {[
     { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
     { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
-    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" }, // update if needed
-    { src: "/images/Twitter.png", alt: "Twitter", href: "https://twitter.com" }, // replace with actual link if available
+    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" }, 
     { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
   ].map((social, index) => (
     <a
@@ -1224,7 +1223,6 @@ return (
     { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
     { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
     { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" }, // optional if you have one
-    { src: "/images/Twitter.png", alt: "Twitter", href: "https://twitter.com" }, // replace if active
     { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
   ].map((social, index) => (
     <a
@@ -1798,55 +1796,120 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
         </section>
 
         {/* Section 8 - Search and Logos */}
-        <section className="w-screen h-[75vh] relative flex flex-col items-center justify-center bg-black text-white"
-          style={{
-            backgroundImage: "url('/images/Bg_1.png')", // Replace with your background image
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-        >
-          {/* Main logo  */}
-          <div className="flex items-center space-x-6 ">
-              <Image
-                src="/images/Logo.png"
-                alt="Logo"
-                width={300}
-                height={80}
-                className="cursor-pointer translate-x-[0px] translate-y-[-50px]"
-              />
-            
-            
-          </div>
+        <section
+  className="w-screen py-20 px-6 bg-black text-white flex flex-col items-center justify-center"
+  style={{
+    backgroundImage: "url('/images/Bg_1.png')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+  }}
+>
+  {/* Grid Content */}
+  <div className="max-w-7xl w-full grid grid-cols-1 md:grid-cols-4 gap-12">
 
-          {/* Bottom logos */}
-          <div className="flex items-center justify-center space-x-8 translate-y-[70px] translate-x-[-30px]">
-  {/* Social media icons with correct links */}
-  {[
-    { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
-    { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
-    { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" }, // optional, replace with real link if available
-    { src: "/images/Twitter.png", alt: "Twitter", href: "https://twitter.com" }, // replace if Medigital has an official Twitter/X
-    { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
-  ].map((social, index) => (
-    <a
-      key={index}
-      href={social.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="w-10 h-10 relative flex items-center justify-center hover:scale-110 transition-transform duration-300"
-    >
-      <Image
-        src={social.src}
-        alt={social.alt}
-        width={40}
-        height={40}
-        className="object-contain"
-      />
-    </a>
-  ))}
-</div>
-        </section>
+    {/* ABOUT US */}
+    <div>
+      <h3 className="text-lg font-semibold mb-4">ABOUT US</h3>
+      <p className="text-gray-300 leading-relaxed">
+        Our dedicated media strategies has
+        proven effective for numerous credible
+        clients, all being leading players in the
+        industry.
+      </p>
+    </div>
+
+    {/* CONTACTS */}
+    <div>
+      <h3 className="text-lg font-semibold mb-4">CONTACTS</h3>
+      <p className="text-gray-300 leading-relaxed">
+        Door No. 41/941, Pipeline Road,<br />
+        Padivattom, Near Govt LP<br />
+        School, Padivattom, 682024,<br />
+        Kerala
+      </p>
+
+      <a
+        href="https://maps.google.com/maps/place//data=!4m2!3m1!1s0x3b080d1caa1c847d:0xe65338c1c3b6b820?entry=s&sa=X&ved=2ahUKEwj6xqrF8ICRAxV7SmwGHSqAOsAQ4kB6BAgEEAA"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline block mt-2"
+      >
+        View on Google Map
+      </a>
+
+      <a
+        href="tel:+918848226408"
+        className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
+      >
+        +91 88482 26408
+      </a>
+<br></br>
+      <a
+        href="mailto:info@mediaexpression.in"
+        className="text-gray-300 mt-1 hover:text-[#EEAA45] transition-colors"
+      >
+        info@mediaexpression.in
+      </a>
+    </div>
+
+    {/* MEDIA SERVICES */}
+    <div>
+      <h3 className="text-lg font-semibold mb-4">MEDIA SERVICES</h3>
+      <ul className="space-y-2 text-gray-300">
+        <li>Media Consultancy</li>
+        <li>Media Strategy & Development</li>
+        <li>Media Planning</li>
+        <li>Media Buying</li>
+        <li>Media Plan Execution</li>
+      </ul>
+    </div>
+
+    {/* CREATIVE SERVICES */}
+    <div>
+      <h3 className="text-lg font-semibold mb-4">CREATIVE SERVICES</h3>
+      <ul className="space-y-2 text-gray-300">
+        <li>Design Services</li>
+        <li>Strategy Services</li>
+        <li>Creative Content Development</li>
+        <li>Market Research & Analysis</li>
+        <li>Media Communication Services</li>
+      </ul>
+    </div>
+  </div>
+
+  {/* Social Media Icons */}
+  <div className="flex items-center justify-center space-x-8 mt-16">
+    {[
+      { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
+      { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
+      { src: "/images/Youtube.png", alt: "YouTube", href: "https://www.youtube.com/@mediaexpressiondigital8057/featured" },
+      { src: "/images/Linkedin.png", alt: "LinkedIn", href: "https://www.linkedin.com/company/mediaexpressiondigital/posts/?feedView=all" },
+    ].map((social, i) => (
+      <a
+        key={i}
+        href={social.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="w-10 h-10 relative flex items-center justify-center hover:scale-110 transition-transform duration-300"
+      >
+        <Image
+          src={social.src}
+          alt={social.alt}
+          width={40}
+          height={40}
+          className="object-contain"
+        />
+      </a>
+    ))}
+  </div>
+
+  {/* Bottom Text */}
+  <div className="w-full h-[1px] bg-gradient-to-r from-[#EEAA45] via-gray-500 to-[#EEAA45] mt-10"></div>
+  <p className="text-gray-400 text-sm mt-10">
+    Media Expression © 2025. All rights reserved.
+  </p>
+</section>
 
 
       </div>

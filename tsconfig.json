@@ -16,12 +16,18 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "baseUrl": ".",
+
     "paths": {
-      "@/*": ["src/*"],
-    "typeRoots": ["./src/types", "./node_modules/@types"]  
-      
-    }
+      "@/*": ["src/*"]
+    },
+
+    "typeRoots": [
+      "./src/types",
+      "./node_modules/@types"
+    ],
+    "types": ["node"]
   },
+
   "include": [
     "next-env.d.ts",
     ".next/types/**/*.ts",
@@ -29,6 +35,7 @@
     "**/*.tsx",
     "src/types/**/*.d.ts"
   ],
+
   "exclude": [
     "node_modules",
     ".next",

@@ -124,13 +124,13 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
             className="flex items-center gap-8 overflow-x-auto py-6 px-6 no-scrollbar scroll-smooth"
           >
             {/* Add some left padding so logos don't stick to edge */}
-            <div className="flex-shrink-0 w-6" />
+            <div className="flex-shrink-0 w-3" />
 
             {items.map((it) => (
               <button
                 key={it.id}
                 onClick={() => openModal(it)}
-                className="w-36 h-20 flex-shrink-0 flex items-center justify-center bg-white rounded focus:outline-none"
+                className="w-72 h-40 flex-shrink-0 flex items-center justify-center bg-white rounded focus:outline-none"
                 aria-label={it.title}
                 title={it.title}
               >
@@ -152,7 +152,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
             ))}
 
             {/* Add some right padding too */}
-            <div className="flex-shrink-0 w-6" />
+            <div className="flex-shrink-0 w-3" />
           </div>
         </div>
       </section>
@@ -179,7 +179,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
             </button>
 
             <div className="flex justify-center mb-4">
-              <div className="relative w-40 h-20">
+              <div className="relative w-80 h-40">
                 {active.logo ? (
                   <Image
                     src={active.logo}
