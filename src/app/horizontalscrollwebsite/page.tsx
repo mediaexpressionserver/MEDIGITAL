@@ -1150,22 +1150,14 @@ useEffect(() => {
         Padivattom, Near Govt LP School, Padivattom, 682024, Kerala
       </p>
 
-      <a
-        href="https://maps.google.com/maps/place//data=!4m2!3m1!1s0x3b080d1caa1c847d:0xe65338c1c3b6b820?entry=s&sa=X&ved=2ahUKEwj6xqrF8ICRAxV7SmwGHSqAOsAQ4kB6BAgEEAA"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="underline block mt-2 text-sm"
-      >
-        View on Google Map
-      </a>
 
-      <a
-        href="tel:+918848226408"
-        className="mt-4 font-semibold text-base hover:text-[#EEAA45] transition-colors block"
-      >
-        +91 88482 26408
-      </a>
 
+<a
+  href="tel:+918848226408"
+  className="mt-4 font-semibold text-base hover:text-[#EEAA45] transition-colors block pointer-events-auto"
+>
+  +91 88482 26408
+</a>
       <a
         href="mailto:info@mediaexpression.in"
         className="text-gray-300 mt-1 hover:text-[#EEAA45] transition-colors block text-sm"
