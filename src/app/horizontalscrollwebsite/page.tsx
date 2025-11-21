@@ -1984,4 +1984,3 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
     </div>
   );
 };
-
