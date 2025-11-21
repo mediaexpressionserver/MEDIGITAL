@@ -237,7 +237,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
           {/* ⭐ UPDATED MODAL POSITION FOR MOBILE HERE ⭐ */}
           <div
             className={`relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6 transform ${
-              isMobile ? "translate-y-6" : "-translate-y-[100px]" 
+              isMobile ? "translate-y-6" : "-translate-y-32"
             } transition-transform`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -266,19 +266,19 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
               {active.title}
             </h3>
 
-            <div className={`overflow-auto text-sm mb-4 prose max-w-none ${isMobile ? "max-h-[48vh]" : "max-h-[35vh]"}`}>
+            <div className="overflow-auto max-h-[48vh] text-sm mb-4 prose max-w-none">
               <div dangerouslySetInnerHTML={{ __html: active.body }} />
             </div>
 
             <div className="flex justify-center gap-3">
               {active.blogSlug ? (
                 <Link
-  href={`/blog2/${encodeURIComponent(String(active.blogSlug || "").trim())}`}
-  onClick={closeModal}
-  className="inline-block bg-orange-500 text-white px-4 py-2 rounded text-sm"
->
-  {active.ctaText || "Read full case study"}
-</Link>
+                  href={`/blog/${active.blogSlug}`}
+                  onClick={closeModal}
+                  className="bg-orange-500 text-white px-4 py-2 rounded text-sm"
+                >
+                  {active.ctaText}
+                </Link>
               ) : (
                 <span className="text-sm text-gray-500">No blog linked</span>
               )}

@@ -17,36 +17,17 @@ export const metadata = {
 type AnyClient = Record<string, any>;
 
 async function fetchBlog2AdminRows(): Promise<AnyClient[]> {
-  // Try relative first (works in server runtime on Vercel/Next)
-  try {
-    const relRes = await fetch(new URL("/api/admin/clients_blog2", process.env.NEXTAUTH_URL ?? "http://localhost:3000").toString(), {
-      cache: "no-store",
-      // If running on server environment, this relative request should succeed.
-    });
-    if (relRes.ok) {
-      const parsed = await relRes.json().catch(() => null);
-      if (Array.isArray(parsed)) return parsed;
-      if (parsed && Array.isArray(parsed.data)) return parsed.data;
-      if (parsed && Array.isArray(parsed.clients)) return parsed.clients;
-    }
-  } catch (e) {
-    // continue to fallback below
-    // eslint-disable-next-line no-console
-    console.warn("[fetchBlog2AdminRows] relative fetch failed:", e);
-  }
-
-  // Fallback: build absolute url from environment (works in other deploy setups)
   const base =
     process.env.NEXT_PUBLIC_BASE_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
     "http://localhost:3000";
 
-  const url = `${String(base).replace(/\/$/, "")}/api/admin/clients_blog2`;
+  const url = `${base.replace(/\/$/, "")}/api/admin/clients_blog2`;
 
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return [];
-    const json = await res.json().catch(() => null);
+    const json = await res.json();
     if (Array.isArray(json)) return json;
     if (json && Array.isArray(json.data)) return json.data;
     if (json && Array.isArray(json.clients)) return json.clients;
