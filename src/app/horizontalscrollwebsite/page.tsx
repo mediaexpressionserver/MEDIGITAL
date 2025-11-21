@@ -737,7 +737,7 @@ useEffect(() => {
 <div
   className={`absolute top-0 right-0 w-72 h-[500px] landscape:h-[350px] bg-white text-black shadow-2xl transform transition-transform duration-300 z-50 ${
     menuOpen ? "translate-x-0" : "translate-x-full"
-  } rounded-bl-none landscape:rounded-bl-2xl`}
+  } rounded-bl-2xl landscape:rounded-bl-2xl`}
   ref={menuRef}
 >
   {/* Logo inside menu */}
@@ -808,8 +808,6 @@ useEffect(() => {
     <ChevronDown className="w-10 h-10 text-white animate-bounce" />
   </div>
 </section>
-  {/* Extended Orange Background */}
-  <div className="absolute bottom-[20px] left-0 right-0 h-[80px] bg-[#EEAA45] w-full rounded-b-[3rem] z-`0"></div>
 </div>
 {/* Section 2 - Ideas */}
 <section id="ourwaydesktop"

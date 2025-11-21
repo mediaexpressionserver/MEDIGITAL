@@ -44,6 +44,9 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
   const [active, setActive] = useState<ReturnType<typeof normalize> | null>(null);
   const logoScrollRef = useRef<HTMLDivElement | null>(null);
 
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -70,6 +73,36 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
     };
   }, [apiUrl]);
 
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => {
+      try {
+        const ua =
+          navigator.userAgent || navigator.vendor || (window as any).opera || "";
+        const isTabletOrMobileUA = /iPhone|iPod|Android|Mobile|iPad|Tablet|PlayBook|Silk/i.test(
+          ua
+        );
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const isSmallScreen = width <= 1024 && height <= 1366;
+        const isDesktopMac = /Macintosh/i.test(ua) && !/iPad/i.test(ua);
+        const shouldUseMobileLayout =
+          !isDesktopMac && (isTabletOrMobileUA || isSmallScreen);
+        setIsMobile(shouldUseMobileLayout);
+      } catch {
+        setIsMobile(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    window.addEventListener("orientationchange", checkMobile);
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("orientationchange", checkMobile);
+    };
+  }, []);
+
   function openModal(item: ReturnType<typeof normalize>) {
     setActive(item);
     setModalOpen(true);
@@ -91,71 +124,105 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
   if (items.length === 0)
     return <div className="py-8 text-center">No clients found yet.</div>;
 
+  // Desktop layout
+  const DesktopCarousel = () => (
+    <section className="w-full bg-white overflow-hidden">
+      <div className="relative max-w-full mx-auto">
+        <button
+          onClick={scrollLogosLeft}
+          aria-label="Previous logos"
+          className="absolute left-3 top-1/2 z-10 p-2 -translate-y-1/2 bg-white rounded-full shadow-md"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+
+        <button
+          onClick={scrollLogosRight}
+          aria-label="Next logos"
+          className="absolute right-3 top-1/2 z-10 p-2 -translate-y-1/2 bg-white rounded-full shadow-md"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+
+        <div
+          ref={logoScrollRef}
+          className="flex items-center gap-8 overflow-x-auto py-6 px-6 no-scrollbar"
+        >
+          <div className="flex-shrink-0 w-3" />
+
+          {items.map((it) => (
+            <button
+              key={it.id}
+              onClick={() => openModal(it)}
+              className="w-72 h-40 flex-shrink-0 flex items-center justify-center bg-white rounded"
+            >
+              {it.logo ? (
+                <div className="relative w-full h-full p-2">
+                  <Image
+                    src={it.logo}
+                    alt={`${it.title} logo`}
+                    fill
+                    style={{ objectFit: "contain" }}
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                <div className="text-sm text-gray-600">{it.title}</div>
+              )}
+            </button>
+          ))}
+
+          <div className="flex-shrink-0 w-3" />
+        </div>
+      </div>
+    </section>
+  );
+
+  // Mobile layout
+  const MobileCarousel = () => (
+    <section className="w-full bg-white overflow-hidden">
+      <div className="relative max-w-full mx-auto">
+        <div
+          ref={logoScrollRef}
+          className="flex items-center gap-4 overflow-x-auto py-4 px-4 no-scrollbar"
+        >
+          <div className="flex-shrink-0 w-2" />
+
+          {items.map((it) => (
+            <button
+              key={it.id}
+              onClick={() => openModal(it)}
+              className="w-44 h-28 flex-shrink-0 flex items-center justify-center bg-white rounded"
+            >
+              {it.logo ? (
+                <div className="relative w-full h-full p-2">
+                  <Image
+                    src={it.logo}
+                    alt={`${it.title} logo`}
+                    fill
+                    style={{ objectFit: "contain" }}
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                <div className="text-xs text-gray-600">{it.title}</div>
+              )}
+            </button>
+          ))}
+
+          <div className="flex-shrink-0 w-2" />
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <>
-      {/* Full-bleed white background — stretches edge-to-edge */}
-      <section className="w-full bg-white overflow-hidden">
-        <div className="relative max-w-full mx-auto">
-          {/* Left button */}
-          <button
-            onClick={scrollLogosLeft}
-            aria-label="Previous logos"
-            className="absolute left-3 top-1/2 z-10 p-2 -translate-y-1/2 bg-white rounded-full shadow-md focus:outline-none focus:ring"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-
-          {/* Right button */}
-          <button
-            onClick={scrollLogosRight}
-            aria-label="Next logos"
-            className="absolute right-3 top-1/2 z-10 p-2 -translate-y-1/2 bg-white rounded-full shadow-md focus:outline-none focus:ring"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-
-          {/* Scroll area */}
-          <div
-            ref={logoScrollRef}
-            className="flex items-center gap-8 overflow-x-auto py-6 px-6 no-scrollbar scroll-smooth"
-          >
-            {/* Add some left padding so logos don't stick to edge */}
-            <div className="flex-shrink-0 w-3" />
-
-            {items.map((it) => (
-              <button
-                key={it.id}
-                onClick={() => openModal(it)}
-                className="w-72 h-40 flex-shrink-0 flex items-center justify-center bg-white rounded focus:outline-none"
-                aria-label={it.title}
-                title={it.title}
-              >
-                {it.logo ? (
-                  <div className="relative w-full h-full p-2">
-                    <Image
-                      src={it.logo}
-                      alt={`${it.title} logo`}
-                      fill
-                      style={{ objectFit: "contain" }}
-                      sizes="144px"
-                      unoptimized // avoids Next image host config issues for external URLs
-                    />
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-600">{it.title}</div>
-                )}
-              </button>
-            ))}
-
-            {/* Add some right padding too */}
-            <div className="flex-shrink-0 w-3" />
-          </div>
-        </div>
-      </section>
+      {isMobile ? <MobileCarousel /> : <DesktopCarousel />}
 
       {/* Modal */}
       {modalOpen && active && (
@@ -166,13 +233,16 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
           onClick={closeModal}
         >
           <div className="absolute inset-0 bg-black/60" />
+
+          {/* ⭐ UPDATED MODAL POSITION FOR MOBILE HERE ⭐ */}
           <div
-            className="relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6 transform -translate-y-32 transition-transform"
+            className={`relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6 transform ${
+              isMobile ? "translate-y-6" : "-translate-y-32"
+            } transition-transform`}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={closeModal}
-              aria-label="Close"
               className="absolute right-3 top-3 text-gray-600 hover:text-black"
             >
               ✕
@@ -180,22 +250,23 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
 
             <div className="flex justify-center mb-4">
               <div className="relative w-80 h-40">
-                {active.logo ? (
+                {active.logo && (
                   <Image
                     src={active.logo}
-                    alt={`${active.title} logo`}
+                    alt={active.title}
                     fill
                     style={{ objectFit: "contain" }}
                     unoptimized
                   />
-                ) : null}
+                )}
               </div>
             </div>
 
-            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">{active.title}</h3>
+            <h3 className="text-lg font-semibold text-center mb-2">
+              {active.title}
+            </h3>
 
-            {/* Scrollable content area with fixed max height */}
-            <div className="overflow-auto max-h-[48vh] text-sm text-gray-700 mb-4 prose max-w-none">
+            <div className="overflow-auto max-h-[48vh] text-sm mb-4 prose max-w-none">
               <div dangerouslySetInnerHTML={{ __html: active.body }} />
             </div>
 
@@ -204,9 +275,9 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
                 <Link
                   href={`/blog/${active.blogSlug}`}
                   onClick={closeModal}
-                  className="inline-block bg-orange-500 text-white px-4 py-2 rounded text-sm"
+                  className="bg-orange-500 text-white px-4 py-2 rounded text-sm"
                 >
-                  {active.ctaText || "Read full case study"}
+                  {active.ctaText}
                 </Link>
               ) : (
                 <span className="text-sm text-gray-500">No blog linked</span>
