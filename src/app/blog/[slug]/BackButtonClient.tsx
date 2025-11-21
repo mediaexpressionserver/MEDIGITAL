@@ -1,47 +1,114 @@
 // src/app/blog2/[slug]/BackButtonClient.tsx
 "use client";
 
+import React, { useEffect, useState, useCallback } from "react";
 import BackButton from "@/components/BackButton";
 import { useRouter } from "next/navigation";
 
 export default function BackButtonClient() {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
-  const handleClick = async () => {
+  const detectMobile = useCallback(() => {
+    try {
+      const ua =
+        (typeof navigator !== "undefined" && (navigator.userAgent || navigator.vendor)) ||
+        (typeof (window as any) !== "undefined" && (window as any).opera) ||
+        "";
+      const isTabletOrMobileUA =
+        /iPhone|iPod|Android|Mobile|iPad|Tablet|PlayBook|Silk/i.test(ua);
+      const width = typeof window !== "undefined" ? window.innerWidth : 0;
+      const height = typeof window !== "undefined" ? window.innerHeight : 0;
+      const isSmallScreen = width <= 1024 && height <= 1366;
+      const isDesktopMac = /Macintosh/i.test(ua) && !/iPad/i.test(ua);
+      const shouldUseMobileLayout = !isDesktopMac && (isTabletOrMobileUA || isSmallScreen);
+      setIsMobile(Boolean(shouldUseMobileLayout));
+    } catch {
+      setIsMobile(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    detectMobile();
+    // update on resize / orientation change
+    const onResize = () => detectMobile();
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", onResize);
+      window.addEventListener("orientationchange", onResize);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("resize", onResize);
+        window.removeEventListener("orientationchange", onResize);
+      }
+    };
+  }, [detectMobile]);
+
+  // Desktop behavior (keeps your original logic)
+  const handleDesktopClick = async () => {
     const targetRoute = "/horizontalscrollwebsite";
     const hash = "#portfoliodesktop";
 
-    // If already on the target route, try immediate smooth scroll
     try {
       if (typeof window !== "undefined" && window.location.pathname === targetRoute) {
         const el = document.getElementById("portfoliodesktop");
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "start" });
-          try { history.replaceState(null, "", hash); } catch {}
+          try {
+            history.replaceState(null, "", hash);
+          } catch {}
           return;
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
-    // Navigate, then dispatch an event after a short delay so destination can hydrate/listen
     try {
       await router.push(targetRoute);
     } catch (err) {
       console.warn("[BackButtonClient] router.push failed:", err);
     }
 
-    // small delay; adjust to 200-500ms if your page needs more time
+    // dispatch event after a short delay so the destination can hydrate/listen
     setTimeout(() => {
       try {
-        window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: hash }));
+        window.dispatchEvent(
+          new CustomEvent("header-scroll-to", {
+            detail: hash,
+          })
+        );
       } catch (err) {
         console.warn("[BackButtonClient] failed to dispatch header-scroll-to", err);
       }
     }, 250);
   };
 
+  // Mobile behavior
+  const handleMobileClick = () => {
+    if (typeof window !== "undefined" && window.history && window.history.length > 0) {
+      try {
+        window.history.back();
+      } catch (err) {
+        console.warn("[BackButtonClient] history.back failed:", err);
+      }
+    } else {
+      // fallback: navigate to a safe location if no history exists
+      try {
+        router.push("/");
+      } catch {}
+    }
+  };
+
+  const handleClick = isMobile ? handleMobileClick : handleDesktopClick;
+
   return (
-    <div onClick={handleClick} style={{ display: "inline-block", cursor: "pointer" }}>
+    <div
+      onClick={handleClick}
+      style={{ display: "inline-block", cursor: "pointer" }}
+      role="button"
+      aria-label="Back"
+    >
       <BackButton />
     </div>
   );
