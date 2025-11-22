@@ -1,4 +1,3 @@
-// src/app/blog2/[slug]/BackButtonClient.tsx
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -44,7 +43,7 @@ export default function BackButtonClient() {
     };
   }, [detectMobile]);
 
-  // Desktop behavior (keeps your original logic)
+  // Desktop behavior (instant jump to section)
   const handleDesktopClick = async () => {
     const targetRoute = "/horizontalscrollwebsite";
     const hash = "#portfoliodesktop";
@@ -53,10 +52,13 @@ export default function BackButtonClient() {
       if (typeof window !== "undefined" && window.location.pathname === targetRoute) {
         const el = document.getElementById("portfoliodesktop");
         if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          // update URL hash first so history/state reflects destination
           try {
             history.replaceState(null, "", hash);
           } catch {}
+
+          // instant jump (no smooth) as requested
+          el.scrollIntoView({ behavior: "auto", block: "start" });
           return;
         }
       }
@@ -71,6 +73,7 @@ export default function BackButtonClient() {
     }
 
     // dispatch event after a short delay so the destination can hydrate/listen
+    // (reduced to 50ms to trigger earlier)
     setTimeout(() => {
       try {
         window.dispatchEvent(
@@ -81,7 +84,7 @@ export default function BackButtonClient() {
       } catch (err) {
         console.warn("[BackButtonClient] failed to dispatch header-scroll-to", err);
       }
-    }, 250);
+    }, 50);
   };
 
   // Mobile behavior

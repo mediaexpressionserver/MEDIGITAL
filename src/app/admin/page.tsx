@@ -106,6 +106,24 @@ export default function AdminPage() {
   }, []);
 
   /* ------------------ API helpers ------------------ */
+  async function uploadFilesAndReplaceState(files: FileList | File[], stateKey: 'images' | 'videos' | 'blog2_images' | 'blog2_videos') {
+  const arr = Array.from(files);
+  const tempUrls = arr.map((f) => URL.createObjectURL(f));
+  setEditing((prev) => (prev ? { ...prev, [stateKey]: [...(prev[stateKey] || []), ...tempUrls] } : prev));
+  try {
+    const uploaded = await uploadFilesToServer(arr);
+    setEditing((prev) => {
+      if (!prev) return prev;
+      const existing = (prev[stateKey] || []).filter((s: string) => !s.startsWith("blob:"));
+      return { ...prev, [stateKey]: [...existing, ...uploaded] };
+    });
+    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+    setStatus(`Uploaded ${uploaded.length} file(s)`);
+  } catch (err: any) {
+    console.error("upload error:", err);
+    setStatus("Upload failed: " + (err?.message || "unknown"));
+  }
+}
 
   async function fetchList() {
     setLoading(true);
@@ -269,6 +287,11 @@ export default function AdminPage() {
     return `${(n / (1024 * 1024)).toFixed(2)} MB`;
   }
 
+  function sanitizeUrls(arr?: string[] | null) {
+    if (!arr) return undefined;
+    return arr.filter((u) => !!u && !String(u).startsWith("blob:"));
+  }
+
   const CLIENT_MAX_MB = 8;
   const CLIENT_MAX_BYTES = CLIENT_MAX_MB * 1024 * 1024;
 
@@ -315,22 +338,26 @@ export default function AdminPage() {
       setStatus("Please fill required fields (client name & blog title).");
       return;
     }
-    if (!logoUrl1 && selectedFiles1.length === 0) {
-      setStatus("Please upload a logo (required) or select files to include.");
-      return;
-    }
-
+    if (!logoUrl1 && selectedFiles1.length === 0 && previews1.length === 0) {
+  setStatus("Please upload a logo (required) or select files to include.");
+  return;
+}
     setStatus("Creating Client Case Study...");
     setUploadingFiles(true);
 
     try {
-      let uploadedImageUrls: string[] = [];
-      let uploadedVideoUrls: string[] = [];
+     let uploadedImageUrls: string[] = [];
+let uploadedVideoUrls: string[] = [];
 
-      if (selectedFiles1.length > 0) uploadedImageUrls = await uploadFilesToServer(selectedFiles1);
-      if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(selectedVideos1);
+// If images were already uploaded during selection, use those previews (they contain public URLs).
+if (previews1.length > 0 && selectedFiles1.length === 0) {
+  uploadedImageUrls = sanitizeUrls(previews1) || [];
+} else if (selectedFiles1.length > 0) {
+  uploadedImageUrls = await uploadFilesToServer(selectedFiles1);
+}
+if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(selectedVideos1);
 
-      let logoToSend = logoUrl1 || (uploadedImageUrls.length ? uploadedImageUrls[0] : undefined);
+      let logoToSend = (logoUrl1 && !String(logoUrl1).startsWith('blob:')) ? logoUrl1 : (sanitizeUrls(uploadedImageUrls) ? sanitizeUrls(uploadedImageUrls)![0] : undefined);
 
       const payload: any = {
         client_name: clientName1.trim(),
@@ -338,10 +365,10 @@ export default function AdminPage() {
         blog_title: blogTitle1.trim(),
         blog_slug: slugify(blogTitle1),
         cta_text: ctaText1 || undefined,
-        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-        videos: uploadedVideoUrls.length > 0 ? uploadedVideoUrls : undefined,
+        images: sanitizeUrls(uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined),
+        videos: sanitizeUrls(uploadedVideoUrls.length > 0 ? uploadedVideoUrls : undefined),
         blog_body_html: blogBody1 || "", // ensure non-null to avoid DB constraint
-        blog_feature_image: featureImageUrl1 || (uploadedImageUrls.length > 0 ? uploadedImageUrls[0] : undefined),
+        blog_feature_image: (featureImageUrl1 && !String(featureImageUrl1).startsWith('blob:')) ? featureImageUrl1 : (sanitizeUrls(uploadedImageUrls) ? sanitizeUrls(uploadedImageUrls)![0] : undefined),
         created_at: new Date().toISOString(),
       };
 
@@ -399,14 +426,14 @@ export default function AdminPage() {
         client_name: clientName2.trim(),
         blog_title: blogTitle2.trim(), // required by server validation in your route
         blog_slug: slugify(blogTitle2),
-        logo_url: logoUrl2 || (uploadedImageUrls.length ? uploadedImageUrls[0] : undefined),
+        logo_url: (logoUrl2 && !String(logoUrl2).startsWith('blob:')) ? logoUrl2 : (sanitizeUrls(uploadedImageUrls) ? sanitizeUrls(uploadedImageUrls)![0] : undefined),
         // blog2-specific fields (kept separate)
         blog2_title: blogTitle2.trim(),
         blog2_slug: slugify(blogTitle2),
         blog2_body_html: blogBody2 || undefined,
-        blog2_feature_image: featureImageUrl2 || (uploadedImageUrls.length ? uploadedImageUrls[0] : undefined),
-        blog2_images: uploadedImageUrls.length ? uploadedImageUrls : undefined,
-        blog2_videos: uploadedVideoUrls.length ? uploadedVideoUrls : undefined,
+        blog2_feature_image: (featureImageUrl2 && !String(featureImageUrl2).startsWith('blob:')) ? featureImageUrl2 : (sanitizeUrls(uploadedImageUrls) ? sanitizeUrls(uploadedImageUrls)![0] : undefined),
+        blog2_images: sanitizeUrls(uploadedImageUrls.length ? uploadedImageUrls : undefined),
+        blog2_videos: sanitizeUrls(uploadedVideoUrls.length ? uploadedVideoUrls : undefined),
         // important: ensure top-level blog_body_html is never null (db constraint).
         blog_body_html: "",
         created_at: new Date().toISOString(),
@@ -462,24 +489,46 @@ export default function AdminPage() {
   /* ------------------ helpers for selecting files ------------------ */
 
   function onFilesChange1(files: FileList | null) {
-    if (!files) return;
-    const arr = Array.from(files).slice(0, 4);
-    setSelectedFiles1(arr);
-    const urls = arr.map((f) => URL.createObjectURL(f));
-    setPreviews1((prev) => {
-      prev.forEach((p) => {
-        try {
-          URL.revokeObjectURL(p);
-        } catch {}
-      });
-      return urls;
+  if (!files) return;
+  const arr = Array.from(files).slice(0, 4);
+  setSelectedFiles1(arr);
+
+  // show immediate blob previews for UX
+  const tempUrls = arr.map((f) => URL.createObjectURL(f));
+  setPreviews1((prev) => {
+    prev.forEach((p) => {
+      try { if (p && p.startsWith('blob:')) URL.revokeObjectURL(p); } catch {}
     });
-    setStatus(arr.length ? `${arr.length} image(s) selected for Client` : null);
-  }
+    return tempUrls;
+  });
+  setStatus(arr.length ? `${arr.length} image(s) selected for Client` : null);
+
+  // upload immediately and replace previews with server URLs
+  (async () => {
+    try {
+      setUploadingFiles(true);
+      const uploaded = await uploadFilesToServer(arr);
+      // revoke temporary blob URLs
+      tempUrls.forEach((u) => { try { if (u && u.startsWith('blob:')) URL.revokeObjectURL(u); } catch {} });
+      // replace previews with uploaded public URLs
+      setPreviews1(uploaded);
+      // clear selectedFiles1 to avoid double-upload later
+      setSelectedFiles1([]);
+      setStatus(`Uploaded ${uploaded.length} image(s)`);
+    } catch (err: any) {
+      console.error('onFilesChange1 upload error:', err);
+      setStatus('Image upload failed: ' + (err?.message || 'unknown'));
+      // keep blob previews so user can retry
+    } finally {
+      setUploadingFiles(false);
+    }
+  })();
+}
 
   // UPDATED: upload videos immediately and replace blob previews with server URLs
   async function onVideosChange1(files: FileList | null) {
     if (!files) return;
+    setUploadingFiles(true);
     const arr = Array.from(files).slice(0, 4);
     setSelectedVideos1(arr);
 
@@ -509,6 +558,8 @@ export default function AdminPage() {
       console.error("onVideosChange1 upload error:", err);
       setStatus("Video upload failed: " + (err?.message || "unknown"));
       // keep blob previews so user can retry upload or inspect
+    } finally {
+      setUploadingFiles(false);
     }
   }
 
@@ -531,6 +582,7 @@ export default function AdminPage() {
   // UPDATED: upload videos immediately and replace blob previews with server URLs
   async function onVideosChange2(files: FileList | null) {
     if (!files) return;
+    setUploadingFiles(true);
     const arr = Array.from(files).slice(0, 4);
     setSelectedVideos2(arr);
 
@@ -558,6 +610,8 @@ export default function AdminPage() {
     } catch (err: any) {
       console.error("onVideosChange2 upload error:", err);
       setStatus("Video upload failed: " + (err?.message || "unknown"));
+    } finally {
+      setUploadingFiles(false);
     }
   }
 
@@ -604,9 +658,9 @@ export default function AdminPage() {
         setEditingFeaturePreview(url);
         setEditing((prev) => (prev ? { ...prev, blog_feature_image: url } : prev));
       } else {
-        // replace first video
+        // append the uploaded video to the videos array (don't truncate existing videos)
         setEditingVideoPreview(url);
-        setEditing((prev) => (prev ? { ...prev, videos: [url, ...(prev.videos ?? []).slice(1)] } : prev));
+        setEditing((prev) => (prev ? { ...prev, videos: [url, ...(prev.videos ?? [])] } : prev));
       }
       setStatus(`Uploaded ${type}`);
     } catch (err: any) {
@@ -631,7 +685,8 @@ export default function AdminPage() {
         setEditingBlogFeaturePreview(url);
         setEditing((prev) => (prev ? { ...prev, blog2_feature_image: url } : prev));
       } else {
-        setEditing((prev) => (prev ? { ...prev, blog2_videos: [url, ...(prev.blog2_videos ?? []).slice(1)] } : prev));
+        // append the uploaded blog2 video to the blog2_videos array
+        setEditing((prev) => (prev ? { ...prev, blog2_videos: [url, ...(prev.blog2_videos ?? [])] } : prev));
       }
       setStatus("Uploaded blog2 file");
     } catch (err: any) {
@@ -654,17 +709,17 @@ export default function AdminPage() {
         blog_slug: updated.blog_slug,
         blog_body_html: updated.blog_body_html ?? undefined,
         cta_text: updated.cta_text,
-        images: updated.images !== undefined ? updated.images : undefined,
-        videos: updated.videos !== undefined ? updated.videos ?? [] : undefined,
+        images: sanitizeUrls(Array.isArray(updated.images) ? updated.images as string[] : undefined),
+        videos: sanitizeUrls(Array.isArray(updated.videos) ? updated.videos as string[] : undefined),
         body_data: updated.body_data || undefined,
-        blog_feature_image: updated.blog_feature_image || undefined,
+        blog_feature_image: (updated.blog_feature_image && !String(updated.blog_feature_image).startsWith('blob:')) ? updated.blog_feature_image : undefined,
         // blog2 fields - include explicitly if present (allow clearing with empty arrays)
         blog2_title: (updated as any).blog2_title ?? undefined,
         blog2_slug: (updated as any).blog2_slug ?? undefined,
         blog2_body_html: (updated as any).blog2_body_html ?? undefined,
         blog2_feature_image: (updated as any).blog2_feature_image ?? undefined,
-        blog2_images: (updated as any).blog2_images !== undefined ? (updated as any).blog2_images ?? [] : undefined,
-        blog2_videos: (updated as any).blog2_videos !== undefined ? (updated as any).blog2_videos ?? [] : undefined,
+        blog2_images: sanitizeUrls((updated as any).blog2_images !== undefined ? (updated as any).blog2_images as string[] : undefined),
+        blog2_videos: sanitizeUrls((updated as any).blog2_videos !== undefined ? (updated as any).blog2_videos as string[] : undefined),
       };
 
       // If the editor cleared logo explicitly, still send if present (server will decide).
@@ -732,6 +787,7 @@ export default function AdminPage() {
               <div>
                 <label className="block text-sm font-medium">Images (1–4)</label>
                 <input ref={fileInputRef1} type="file" accept="image/*" multiple onChange={(e) => onFilesChange1(e.target.files)} />
+                {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
                 <div className="mt-3 flex gap-3">
                   {previews1.map((src, idx) => (
                     <div key={idx} className="w-24 h-24 relative border overflow-hidden rounded">
@@ -744,6 +800,7 @@ export default function AdminPage() {
               <div>
                 <label className="block text-sm font-medium">Videos (0–4)</label>
                 <input ref={videoInputRef1} type="file" accept="video/*" multiple onChange={(e) => onVideosChange1(e.target.files)} />
+                {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
                 <div className="mt-3 flex gap-3">
                   {videoPreviews1.map((src) => (
                     <div key={src} className="w-36 h-24 border rounded overflow-hidden">
@@ -875,6 +932,7 @@ export default function AdminPage() {
               <div>
                 <label className="block text-sm font-medium">Blog Images (1–4)</label>
                 <input ref={fileInputRef2} type="file" accept="image/*" multiple onChange={(e) => onFilesChange2(e.target.files)} />
+                {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
                 <div className="mt-3 flex gap-3">
                   {previews2.map((src, idx) => (
                     <div key={idx} className="w-24 h-24 relative border overflow-hidden rounded">
@@ -887,6 +945,7 @@ export default function AdminPage() {
               <div>
                 <label className="block text-sm font-medium">Blog Videos (0–4)</label>
                 <input ref={videoInputRef2} type="file" accept="video/*" multiple onChange={(e) => onVideosChange2(e.target.files)} />
+                {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
                 <div className="mt-3 flex gap-3">
                   {videoPreviews2.map((src) => (
                     <div key={src} className="w-36 h-24 border rounded overflow-hidden">
@@ -1134,13 +1193,37 @@ export default function AdminPage() {
                           type="file"
                           accept="image/*"
                           multiple
-                          onChange={(e) => {
-                            const files = e.target.files;
-                            if (!files || files.length === 0) return;
-                            const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-                            setEditing((prev) => (prev ? { ...prev, blog2_images: [...((prev.blog2_images as string[]) || []), ...newUrls] } : prev));
-                          }}
+                          onChange={async (e) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+
+  // immediate blob previews for UX
+  const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+  setEditing((prev) => (prev ? { ...prev, blog2_images: [...((prev.blog2_images as string[]) || []), ...tempUrls] } : prev));
+
+  setUploadingFiles(true);
+  // upload and replace previews with server URLs
+  try {
+    const uploaded = await uploadFilesToServer(Array.from(files));
+    setEditing((prev) => {
+      if (!prev) return prev;
+      // remove the temp blob urls we added and append server URLs instead.
+      const existing = (prev.blog2_images || []).filter((s: string) => !s.startsWith("blob:"));
+      return { ...prev, blog2_images: [...existing, ...uploaded] };
+    });
+    // revoke blob urls
+    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+    setStatus(`Uploaded ${uploaded.length} image(s)`);
+  } catch (err: any) {
+    console.error("upload blog2 images failed:", err);
+    setStatus("Image upload failed: " + (err?.message || "unknown"));
+    // keep blob previews so user can retry; don't persist blob into DB
+  } finally {
+    setUploadingFiles(false);
+  }
+}}
                         />
+                        {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
                         <div className="mt-3 grid grid-cols-3 gap-3">
                           {(editing.blog2_images || []).map((src: string, idx: number) => (
                             <div key={idx} className="relative w-full h-24 rounded overflow-hidden border">
@@ -1173,13 +1256,33 @@ export default function AdminPage() {
                           type="file"
                           accept="video/*"
                           multiple
-                          onChange={(e) => {
-                            const files = e.target.files;
-                            if (!files || files.length === 0) return;
-                            const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-                            setEditing((prev) => (prev ? { ...prev, blog2_videos: [...((prev.blog2_videos as string[]) || []), ...newUrls] } : prev));
-                          }}
+                          onChange={async (e) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+
+  const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+  setEditing((prev) => (prev ? { ...prev, blog2_videos: [...((prev.blog2_videos as string[]) || []), ...tempUrls] } : prev));
+  setStatus(`Uploading ${files.length} video(s)...`);
+
+  setUploadingFiles(true);
+  try {
+    const uploaded = await uploadFilesToServer(Array.from(files));
+    setEditing((prev) => {
+      if (!prev) return prev;
+      const existing = (prev.blog2_videos || []).filter((s: string) => !s.startsWith("blob:"));
+      return { ...prev, blog2_videos: [...existing, ...uploaded] };
+    });
+    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+    setStatus(`Uploaded ${uploaded.length} video(s)`);
+  } catch (err: any) {
+    console.error("upload blog2 videos failed:", err);
+    setStatus("Video upload failed: " + (err?.message || "unknown"));
+  } finally {
+    setUploadingFiles(false);
+  }
+}}
                         />
+                        {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
                         <div className="mt-3 grid grid-cols-2 gap-3">
                           {(editing.blog2_videos || []).map((src: string, idx: number) => (
                             <div key={idx} className="relative w-full h-28 rounded overflow-hidden border bg-black/5 flex items-center justify-center">
@@ -1355,13 +1458,33 @@ export default function AdminPage() {
       type="file"
       accept="image/*"
       multiple
-      onChange={(e) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-        const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-        setEditing((prev) => (prev ? { ...prev, images: [...(prev.images || []), ...newUrls] } : prev));
-      }}
+      onChange={async (e) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+
+  const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+  setEditing((prev) => (prev ? { ...prev, images: [...(prev.images || []), ...tempUrls] } : prev));
+  setStatus(`Uploading ${files.length} image(s)...`);
+
+  setUploadingFiles(true);
+  try {
+    const uploaded = await uploadFilesToServer(Array.from(files));
+    setEditing((prev) => {
+      if (!prev) return prev;
+      const existing = (prev.images || []).filter((s: string) => !s.startsWith("blob:"));
+      return { ...prev, images: [...existing, ...uploaded] };
+    });
+    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+    setStatus(`Uploaded ${uploaded.length} image(s)`);
+  } catch (err: any) {
+    console.error("upload images failed:", err);
+    setStatus("Image upload failed: " + (err?.message || "unknown"));
+  } finally {
+    setUploadingFiles(false);
+  }
+}}
     />
+    {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
   </div>
 
   {/* Videos */}
@@ -1400,13 +1523,33 @@ export default function AdminPage() {
       type="file"
       accept="video/*"
       multiple
-      onChange={(e) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
-        const newUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-        setEditing((prev) => (prev ? { ...prev, videos: [...(prev.videos || []), ...newUrls] } : prev));
-      }}
+      onChange={async (e) => {
+  const files = e.target.files;
+  if (!files || files.length === 0) return;
+
+  const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+  setEditing((prev) => (prev ? { ...prev, videos: [...(prev.videos || []), ...tempUrls] } : prev));
+  setStatus(`Uploading ${files.length} video(s)...`);
+
+  setUploadingFiles(true);
+  try {
+    const uploaded = await uploadFilesToServer(Array.from(files));
+    setEditing((prev) => {
+      if (!prev) return prev;
+      const existing = (prev.videos || []).filter((s: string) => !s.startsWith("blob:"));
+      return { ...prev, videos: [...existing, ...uploaded] };
+    });
+    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+    setStatus(`Uploaded ${uploaded.length} video(s)`);
+  } catch (err: any) {
+    console.error("upload videos failed:", err);
+    setStatus("Video upload failed: " + (err?.message || "unknown"));
+  } finally {
+    setUploadingFiles(false);
+  }
+}}
     />
+    {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
   </div>
 
   {/* Logo & Feature Image (with X remove) */}
