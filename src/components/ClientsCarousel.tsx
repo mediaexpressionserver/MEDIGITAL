@@ -43,6 +43,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
   const [modalOpen, setModalOpen] = useState(false);
   const [active, setActive] = useState<ReturnType<typeof normalize> | null>(null);
   const logoScrollRef = useRef<HTMLDivElement | null>(null);
+  const prevScrollRef = useRef<number>(0);
 
   // Mobile detection
   const [isMobile, setIsMobile] = useState<boolean>(false);
@@ -103,13 +104,49 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
     };
   }, []);
 
-  function openModal(item: ReturnType<typeof normalize>) {
+  function openModal(item: ReturnType<typeof normalize>, e?: React.MouseEvent) {
+    // prevent the browser from scrolling the container when the button is focused/clicked
+    try {
+      e?.preventDefault();
+      // blur the button to avoid focus-induced scrolling
+      (e?.currentTarget as HTMLElement | undefined)?.blur?.();
+    } catch (_) {}
+
+    // record current scroll position so we can restore it on open and close
+    prevScrollRef.current = logoScrollRef.current?.scrollLeft ?? 0;
+
     setActive(item);
     setModalOpen(true);
+
+    // restore scroll position after render to ensure the carousel does not jump
+    requestAnimationFrame(() => {
+      if (logoScrollRef.current) {
+        logoScrollRef.current.scrollLeft = prevScrollRef.current;
+      }
+    });
   }
   function closeModal() {
+    // blur any focused element (buttons) to avoid focus-driven scrolling
+    try {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    } catch (_) {}
+
+    // temporarily store current scroll, then restore the previous scroll to avoid jumps
+    const current = logoScrollRef.current?.scrollLeft ?? 0;
+    // ensure we keep the previous position (the user scrolled while modal open?)
+    const toRestore = prevScrollRef.current ?? current;
+
     setModalOpen(false);
     setActive(null);
+
+    // restore scroll on the next frame; use a small timeout to allow modal close layout changes
+    requestAnimationFrame(() => {
+      try {
+        if (logoScrollRef.current) {
+          logoScrollRef.current.scrollLeft = toRestore;
+        }
+      } catch (_) {}
+    });
   }
 
   function scrollLogosLeft() {
@@ -157,7 +194,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
           {items.map((it) => (
             <button
               key={it.id}
-              onClick={() => openModal(it)}
+              onClick={(e) => openModal(it, e)}
               className="w-72 h-40 flex-shrink-0 flex items-center justify-center bg-white rounded"
             >
               {it.logo ? (
@@ -195,7 +232,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
           {items.map((it) => (
             <button
               key={it.id}
-              onClick={() => openModal(it)}
+              onClick={(e) => openModal(it, e)}
               className="w-44 h-28 flex-shrink-0 flex items-center justify-center bg-white rounded"
             >
               {it.logo ? (
