@@ -10,11 +10,11 @@ import SimpleEditor from "@/components/SimpleEditor";
 type Client = {
   id: string;
   client_name?: string;
-  logo_url?: string;
+  logo_url?: string | null;
   blog_title?: string;
   blog_slug?: string;
   blog_body_html?: string;
-  blog_feature_image?: string;
+  blog_feature_image?: string | null;
   cta_text?: string;
   created_at?: string;
   images?: string[];
@@ -23,7 +23,7 @@ type Client = {
   blog2_title?: string;
   blog2_slug?: string;
   blog2_body_html?: string;
-  blog2_feature_image?: string;
+  blog2_feature_image?: string | null;
   blog2_images?: string[];
   blog2_videos?: string[];
   body_data?: any;
@@ -83,7 +83,18 @@ export default function AdminPage() {
   const [editingBlogFeatureUploading, setEditingBlogFeatureUploading] = useState(false);
   const [editingBlogFeaturePreview, setEditingBlogFeaturePreview] = useState<string | null>(null);
 
+  const [lastPayload, setLastPayload] = useState<any | null>(null);
+  const [lastResponse, setLastResponse] = useState<any | null>(null);
+
   const [uploadingFiles, setUploadingFiles] = useState(false);
+
+  // Per-field uploading indicators (create + edit)
+  const [uploadingImages1, setUploadingImages1] = useState(false);
+  const [uploadingVideos1, setUploadingVideos1] = useState(false);
+  const [uploadingImages2, setUploadingImages2] = useState(false);
+  const [uploadingVideos2, setUploadingVideos2] = useState(false);
+  const [editingUploadingImages, setEditingUploadingImages] = useState(false);
+  const [editingUploadingVideos, setEditingUploadingVideos] = useState(false);
 
   useEffect(() => {
     fetchList();
@@ -106,24 +117,57 @@ export default function AdminPage() {
   }, []);
 
   /* ------------------ API helpers ------------------ */
-  async function uploadFilesAndReplaceState(files: FileList | File[], stateKey: 'images' | 'videos' | 'blog2_images' | 'blog2_videos') {
-  const arr = Array.from(files);
-  const tempUrls = arr.map((f) => URL.createObjectURL(f));
-  setEditing((prev) => (prev ? { ...prev, [stateKey]: [...(prev[stateKey] || []), ...tempUrls] } : prev));
-  try {
-    const uploaded = await uploadFilesToServer(arr);
-    setEditing((prev) => {
-      if (!prev) return prev;
-      const existing = (prev[stateKey] || []).filter((s: string) => !s.startsWith("blob:"));
-      return { ...prev, [stateKey]: [...existing, ...uploaded] };
-    });
-    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
-    setStatus(`Uploaded ${uploaded.length} file(s)`);
-  } catch (err: any) {
-    console.error("upload error:", err);
-    setStatus("Upload failed: " + (err?.message || "unknown"));
+  async function uploadFileToServer(file: File) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/uploads", { method: "POST", body: fd });
+    const { ok, status, json, text } = await readResponse(res);
+    if (!ok) {
+      const msg = (json && (json.error || json.message)) || text || `Upload failed (${status})`;
+      throw new Error(msg);
+    }
+    // try to pick url
+    const payload = json ?? (text ? JSON.parse(text) : null);
+    if (!payload) throw new Error("Upload returned no payload");
+    if (typeof payload === "string") return payload;
+    if (payload.url) return String(payload.url);
+    if (payload.publicUrl) return String(payload.publicUrl);
+    if (payload.public_url) return String(payload.public_url);
+    if (payload.data?.publicUrl) return String(payload.data.publicUrl);
+    if (Array.isArray(payload.urls) && payload.urls.length) return String(payload.urls[0]);
+    // fallback: return raw JSON as string (unlikely)
+    throw new Error("Upload response didn't contain a usable URL");
   }
-}
+
+  async function uploadFilesToServer(files: File[]) {
+    if (!files || files.length === 0) return [] as string[];
+    const limited = files.slice(0, 4);
+    const urls: string[] = [];
+    for (const f of limited) {
+      const u = await uploadFileToServer(f);
+      urls.push(u);
+    }
+    return urls;
+  }
+
+  async function uploadFilesAndReplaceState(files: FileList | File[], stateKey: 'images' | 'videos' | 'blog2_images' | 'blog2_videos') {
+    const arr = Array.from(files);
+    const tempUrls = arr.map((f) => URL.createObjectURL(f));
+    setEditing((prev) => (prev ? { ...prev, [stateKey]: [...(prev[stateKey] || []), ...tempUrls] } : prev));
+    try {
+      const uploaded = await uploadFilesToServer(arr);
+      setEditing((prev) => {
+        if (!prev) return prev;
+        const existing = (prev[stateKey] || []).filter((s: string) => !s.startsWith("blob:"));
+        return { ...prev, [stateKey]: [...existing, ...uploaded] };
+      });
+      tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+      setStatus(`Uploaded ${uploaded.length} file(s)`);
+    } catch (err: any) {
+      console.error("upload error:", err);
+      setStatus("Upload failed: " + (err?.message || "unknown"));
+    }
+  }
 
   async function fetchList() {
     setLoading(true);
@@ -172,7 +216,7 @@ export default function AdminPage() {
           blog_title: item.blog_title ?? item.blogTitle ?? item.title ?? "",
           blog_slug: item.blog_slug ?? item.blogSlug ?? item.slug ?? "",
           blog_body_html: item.blog_body_html ?? item.blogBodyHtml ?? item.body ?? item.blogBody ?? "",
-          blog_feature_image: item.blog_feature_image ?? item.blogFeatureImage ?? item.feature_image ?? "",
+          blog_feature_image: item.blog_feature_image ?? item.blogFeatureImage ?? item.feature_image ?? null,
           cta_text: item.cta_text ?? item.ctaText ?? "Read full Case study",
           images: item.images ?? item.imageUrls ?? undefined,
           videos: item.videos ?? item.videoUrls ?? item.videos_urls ?? undefined,
@@ -205,7 +249,7 @@ export default function AdminPage() {
             if (Array.isArray(data2) && data2.length) {
               const blog2Normalized = data2.map((r: any) => ({
                 id: String(r.id),
-                client_name: r.client_name ?? r.clientName ?? "",
+                client_name: r.client_name ?? r.clientName ?? r.name ?? "",
                 logo_url: r.logo_url ?? r.logoUrl ?? r.logo ?? r.image ?? "",
                 blog2_title: r.blog2_title ?? r.blog2Title ?? "",
                 blog2_slug: r.blog2_slug ?? r.blog2Slug ?? "",
@@ -250,13 +294,13 @@ export default function AdminPage() {
       blog_slug: i.blog_slug ?? i.blogSlug ?? i.slug ?? "",
       blog_body_html: i.blog_body_html ?? i.blogBodyHtml ?? i.body ?? "",
       logo_url: i.logo_url ?? i.logoUrl ?? i.logo ?? i.image ?? "",
-      blog_feature_image: i.blog_feature_image ?? i.blogFeatureImage ?? i.feature_image ?? "",
+      blog_feature_image: i.blog_feature_image ?? i.blogFeatureImage ?? i.feature_image ?? null,
       images: i.images ?? i.imageUrls ?? undefined,
       videos: i.videos ?? i.videoUrls ?? undefined,
       blog2_title: i.blog2_title ?? i.blog2Title ?? undefined,
       blog2_slug: i.blog2_slug ?? i.blog2Slug ?? undefined,
       blog2_body_html: i.blog2_body_html ?? i.blog2BodyHtml ?? undefined,
-      blog2_feature_image: i.blog2_feature_image ?? i.blog2FeatureImage ?? undefined,
+      blog2_feature_image: i.blog2_feature_image ?? i.blog2FeatureImage ?? null,
       blog2_images: i.blog2_images ?? i.blog2Images ?? undefined,
       blog2_videos: i.blog2_videos ?? i.blog2Videos ?? undefined,
       body_data: i.body_data ?? undefined,
@@ -296,38 +340,6 @@ export default function AdminPage() {
   const CLIENT_MAX_BYTES = CLIENT_MAX_MB * 1024 * 1024;
 
   /* ------------------ upload helpers ------------------ */
-  async function uploadFileToServer(file: File) {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/uploads", { method: "POST", body: fd });
-    const { ok, status, json, text } = await readResponse(res);
-    if (!ok) {
-      const msg = (json && (json.error || json.message)) || text || `Upload failed (${status})`;
-      throw new Error(msg);
-    }
-    // try to pick url
-    const payload = json ?? (text ? JSON.parse(text) : null);
-    if (!payload) throw new Error("Upload returned no payload");
-    if (typeof payload === "string") return payload;
-    if (payload.url) return String(payload.url);
-    if (payload.publicUrl) return String(payload.publicUrl);
-    if (payload.public_url) return String(payload.public_url);
-    if (payload.data?.publicUrl) return String(payload.data.publicUrl);
-    if (Array.isArray(payload.urls) && payload.urls.length) return String(payload.urls[0]);
-    // fallback: return raw JSON as string (unlikely)
-    throw new Error("Upload response didn't contain a usable URL");
-  }
-
-  async function uploadFilesToServer(files: File[]) {
-    if (!files || files.length === 0) return [] as string[];
-    const limited = files.slice(0, 4);
-    const urls: string[] = [];
-    for (const f of limited) {
-      const u = await uploadFileToServer(f);
-      urls.push(u);
-    }
-    return urls;
-  }
 
   /* ------------------ create handlers (separate) ------------------ */
 
@@ -339,23 +351,28 @@ export default function AdminPage() {
       return;
     }
     if (!logoUrl1 && selectedFiles1.length === 0 && previews1.length === 0) {
-  setStatus("Please upload a logo (required) or select files to include.");
-  return;
-}
+      setStatus("Please upload a logo (required) or select files to include.");
+      return;
+    }
+    // prevent creating while related uploads (logo/feature) are in progress
+    if (uploadingLogo1 || uploadingFeature1 || uploadingImages1 || uploadingVideos1) {
+      setStatus('Please wait for logo/feature/image/video uploads to finish before creating.');
+      return;
+    }
     setStatus("Creating Client Case Study...");
     setUploadingFiles(true);
 
     try {
-     let uploadedImageUrls: string[] = [];
-let uploadedVideoUrls: string[] = [];
+      let uploadedImageUrls: string[] = [];
+      let uploadedVideoUrls: string[] = [];
 
-// If images were already uploaded during selection, use those previews (they contain public URLs).
-if (previews1.length > 0 && selectedFiles1.length === 0) {
-  uploadedImageUrls = sanitizeUrls(previews1) || [];
-} else if (selectedFiles1.length > 0) {
-  uploadedImageUrls = await uploadFilesToServer(selectedFiles1);
-}
-if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(selectedVideos1);
+      // If images were already uploaded during selection, use those previews (they contain public URLs).
+      if (previews1.length > 0 && selectedFiles1.length === 0) {
+        uploadedImageUrls = sanitizeUrls(previews1) || [];
+      } else if (selectedFiles1.length > 0) {
+        uploadedImageUrls = await uploadFilesToServer(selectedFiles1);
+      }
+      if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(selectedVideos1);
 
       let logoToSend = (logoUrl1 && !String(logoUrl1).startsWith('blob:')) ? logoUrl1 : (sanitizeUrls(uploadedImageUrls) ? sanitizeUrls(uploadedImageUrls)![0] : undefined);
 
@@ -371,6 +388,8 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
         blog_feature_image: (featureImageUrl1 && !String(featureImageUrl1).startsWith('blob:')) ? featureImageUrl1 : (sanitizeUrls(uploadedImageUrls) ? sanitizeUrls(uploadedImageUrls)![0] : undefined),
         created_at: new Date().toISOString(),
       };
+      // Also include legacy key name for servers that expect `feature_image`
+      payload.feature_image = payload.blog_feature_image ?? payload.feature_image;
 
       const res = await fetch("/api/admin/clients", {
         method: "POST",
@@ -378,6 +397,18 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
         body: JSON.stringify(payload),
       });
       const { ok, json, text, status: st } = await readResponse(res);
+      console.debug("[Admin] handleCreateClient response:", { ok, status: st, json, text });
+
+      // If server returned an object with the created client, try to read its feature image and set local state.
+      const created = (json && (json.data || json.client || json.item)) || json;
+      if (created && typeof created === "object") {
+        const feature = created.blog_feature_image ?? created.feature_image ?? created.blogFeatureImage ?? null;
+        if (feature) {
+          setFeatureImageUrl1(String(feature));
+          console.debug("[Admin] handleCreateClient - detected saved feature image:", feature);
+        }
+      }
+
       if (!ok) throw new Error((json && (json.error || json.message)) || text || `Server returned ${st}`);
 
       setStatus("✅ Created Client Case Study");
@@ -410,7 +441,11 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
       setStatus("Please fill required fields for Blog (client & title).");
       return;
     }
-
+    // prevent creating while related uploads (logo/feature) are in progress
+    if (uploadingLogo2 || uploadingFeature2 || uploadingImages2 || uploadingVideos2) {
+      setStatus('Please wait for logo/feature/image/video uploads to finish before creating.');
+      return;
+    }
     setStatus("Creating Blog...");
     setUploadingFiles(true);
 
@@ -438,6 +473,8 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
         blog_body_html: "",
         created_at: new Date().toISOString(),
       };
+      // Also set legacy and top-level feature keys so backend accepts the feature image
+      payload.feature_image = payload.blog2_feature_image ?? payload.blog_feature_image ?? payload.feature_image;
 
       // <<< DEBUG: print payload so you can confirm what's actually being sent
       console.debug("[Admin] handleCreateBlog payload:", payload);
@@ -461,6 +498,16 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
         // try to show server-provided message when possible
         const serverMsg = (jsonBody && (jsonBody.error || jsonBody.message)) || rawText || `Server returned ${res.status}`;
         throw new Error(serverMsg);
+      }
+
+      // If server returned an object with the created blog, update local state for feature image
+      const created = (jsonBody && (jsonBody.data || jsonBody.client || jsonBody.item)) || jsonBody;
+      if (created && typeof created === "object") {
+        const feature = created.blog2_feature_image ?? created.blog_feature_image ?? created.feature_image ?? created.blog2FeatureImage ?? null;
+        if (feature) {
+          setFeatureImageUrl2(String(feature));
+          console.debug("[Admin] handleCreateBlog - detected saved feature image:", feature);
+        }
       }
 
       setStatus("✅ Created Blog");
@@ -489,45 +536,47 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
   /* ------------------ helpers for selecting files ------------------ */
 
   function onFilesChange1(files: FileList | null) {
-  if (!files) return;
-  const arr = Array.from(files).slice(0, 4);
-  setSelectedFiles1(arr);
+    if (!files) return;
+    const arr = Array.from(files).slice(0, 4);
+    setSelectedFiles1(arr);
 
-  // show immediate blob previews for UX
-  const tempUrls = arr.map((f) => URL.createObjectURL(f));
-  setPreviews1((prev) => {
-    prev.forEach((p) => {
-      try { if (p && p.startsWith('blob:')) URL.revokeObjectURL(p); } catch {}
+    // immediate previews for UX
+    const tempUrls = arr.map((f) => URL.createObjectURL(f));
+    setPreviews1((prev) => {
+      prev.forEach((p) => {
+        try { if (p && p.startsWith('blob:')) URL.revokeObjectURL(p); } catch {}
+      });
+      return tempUrls;
     });
-    return tempUrls;
-  });
-  setStatus(arr.length ? `${arr.length} image(s) selected for Client` : null);
+    setStatus(arr.length ? `${arr.length} image(s) selected for Client` : null);
 
-  // upload immediately and replace previews with server URLs
-  (async () => {
-    try {
+    // upload immediately and replace previews with server URLs
+    (async () => {
+      setUploadingImages1(true);
       setUploadingFiles(true);
-      const uploaded = await uploadFilesToServer(arr);
-      // revoke temporary blob URLs
-      tempUrls.forEach((u) => { try { if (u && u.startsWith('blob:')) URL.revokeObjectURL(u); } catch {} });
-      // replace previews with uploaded public URLs
-      setPreviews1(uploaded);
-      // clear selectedFiles1 to avoid double-upload later
-      setSelectedFiles1([]);
-      setStatus(`Uploaded ${uploaded.length} image(s)`);
-    } catch (err: any) {
-      console.error('onFilesChange1 upload error:', err);
-      setStatus('Image upload failed: ' + (err?.message || 'unknown'));
-      // keep blob previews so user can retry
-    } finally {
-      setUploadingFiles(false);
-    }
-  })();
-}
+      try {
+        const uploaded = await uploadFilesToServer(arr);
+        // revoke temporary blob URLs
+        tempUrls.forEach((u) => { try { if (u && u.startsWith('blob:')) URL.revokeObjectURL(u); } catch {} });
+        // replace previews with uploaded public URLs
+        setPreviews1(uploaded);
+        // clear selectedFiles1 to avoid double-upload later
+        setSelectedFiles1([]);
+        setStatus(`Uploaded ${uploaded.length} image(s)`);
+      } catch (err: any) {
+        console.error('onFilesChange1 upload error:', err);
+        setStatus('Image upload failed: ' + (err?.message || 'unknown'));
+        // keep blob previews so user can retry
+      } finally {
+        setUploadingImages1(false);
+        setUploadingFiles(false);
+      }
+    })();
+  }
 
-  // UPDATED: upload videos immediately and replace blob previews with server URLs
   async function onVideosChange1(files: FileList | null) {
     if (!files) return;
+    setUploadingVideos1(true);
     setUploadingFiles(true);
     const arr = Array.from(files).slice(0, 4);
     setSelectedVideos1(arr);
@@ -537,7 +586,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
     setVideoPreviews1((prev) => {
       prev.forEach((p) => {
         try {
-          if (p.startsWith("blob:")) URL.revokeObjectURL(p);
+          if (p && p.startsWith("blob:")) URL.revokeObjectURL(p);
         } catch {}
       });
       return tempUrls;
@@ -549,7 +598,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
       // replace previews with server URLs, revoke blobs
       tempUrls.forEach((t) => {
         try {
-          if (t.startsWith("blob:")) URL.revokeObjectURL(t);
+          if (t && t.startsWith("blob:")) URL.revokeObjectURL(t);
         } catch {}
       });
       setVideoPreviews1(uploaded);
@@ -559,6 +608,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
       setStatus("Video upload failed: " + (err?.message || "unknown"));
       // keep blob previews so user can retry upload or inspect
     } finally {
+      setUploadingVideos1(false);
       setUploadingFiles(false);
     }
   }
@@ -567,21 +617,39 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
     if (!files) return;
     const arr = Array.from(files).slice(0, 4);
     setSelectedFiles2(arr);
-    const urls = arr.map((f) => URL.createObjectURL(f));
+    const tempUrls = arr.map((f) => URL.createObjectURL(f));
     setPreviews2((prev) => {
       prev.forEach((p) => {
         try {
           URL.revokeObjectURL(p);
         } catch {}
       });
-      return urls;
+      return tempUrls;
     });
     setStatus(arr.length ? `${arr.length} image(s) selected for Blog` : null);
+
+    (async () => {
+      setUploadingImages2(true);
+      setUploadingFiles(true);
+      try {
+        const uploaded = await uploadFilesToServer(arr);
+        tempUrls.forEach((u) => { try { if (u && u.startsWith('blob:')) URL.revokeObjectURL(u); } catch {} });
+        setPreviews2(uploaded);
+        setSelectedFiles2([]);
+        setStatus(`Uploaded ${uploaded.length} image(s)`);
+      } catch (err: any) {
+        console.error('onFilesChange2 upload error:', err);
+        setStatus('Image upload failed: ' + (err?.message || 'unknown'));
+      } finally {
+        setUploadingImages2(false);
+        setUploadingFiles(false);
+      }
+    })();
   }
 
-  // UPDATED: upload videos immediately and replace blob previews with server URLs
   async function onVideosChange2(files: FileList | null) {
     if (!files) return;
+    setUploadingVideos2(true);
     setUploadingFiles(true);
     const arr = Array.from(files).slice(0, 4);
     setSelectedVideos2(arr);
@@ -591,7 +659,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
     setVideoPreviews2((prev) => {
       prev.forEach((p) => {
         try {
-          if (p.startsWith("blob:")) URL.revokeObjectURL(p);
+          if (p && p.startsWith("blob:")) URL.revokeObjectURL(p);
         } catch {}
       });
       return tempUrls;
@@ -602,7 +670,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
       const uploaded = await uploadFilesToServer(arr);
       tempUrls.forEach((t) => {
         try {
-          if (t.startsWith("blob:")) URL.revokeObjectURL(t);
+          if (t && t.startsWith("blob:")) URL.revokeObjectURL(t);
         } catch {}
       });
       setVideoPreviews2(uploaded);
@@ -611,6 +679,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
       console.error("onVideosChange2 upload error:", err);
       setStatus("Video upload failed: " + (err?.message || "unknown"));
     } finally {
+      setUploadingVideos2(false);
       setUploadingFiles(false);
     }
   }
@@ -700,50 +769,156 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
 
   // Save edited client (PATCH)
   async function saveEdit(updated: Client | null) {
-    if (!updated?.id) return;
-    setStatus("Saving...");
+    const cur = (updated && typeof updated === 'object') ? updated : editing;
+    if (!cur?.id) return;
+
+    // prevent saving while any uploads are still in flight
+    if (uploadingFiles || editingLogoUploading || editingFeatureUploading || editingVideoUploading || editingBlogFeatureUploading || editingUploadingImages || editingUploadingVideos) {
+      setStatus('Please wait for uploads to finish before saving.');
+      return;
+    }
+
+    setStatus('Saving...');
+
     try {
+      // Build payload from freshest state. Include feature image fields even when explicitly set to null
       const payload: any = {
-        client_name: updated.client_name,
-        blog_title: updated.blog_title,
-        blog_slug: updated.blog_slug,
-        blog_body_html: updated.blog_body_html ?? undefined,
-        cta_text: updated.cta_text,
-        images: sanitizeUrls(Array.isArray(updated.images) ? updated.images as string[] : undefined),
-        videos: sanitizeUrls(Array.isArray(updated.videos) ? updated.videos as string[] : undefined),
-        body_data: updated.body_data || undefined,
-        blog_feature_image: (updated.blog_feature_image && !String(updated.blog_feature_image).startsWith('blob:')) ? updated.blog_feature_image : undefined,
-        // blog2 fields - include explicitly if present (allow clearing with empty arrays)
-        blog2_title: (updated as any).blog2_title ?? undefined,
-        blog2_slug: (updated as any).blog2_slug ?? undefined,
-        blog2_body_html: (updated as any).blog2_body_html ?? undefined,
-        blog2_feature_image: (updated as any).blog2_feature_image ?? undefined,
-        blog2_images: sanitizeUrls((updated as any).blog2_images !== undefined ? (updated as any).blog2_images as string[] : undefined),
-        blog2_videos: sanitizeUrls((updated as any).blog2_videos !== undefined ? (updated as any).blog2_videos as string[] : undefined),
+        client_name: cur.client_name,
+        blog_title: cur.blog_title,
+        blog_slug: cur.blog_slug,
+        blog_body_html: cur.blog_body_html ?? undefined,
+        cta_text: cur.cta_text,
+        images: sanitizeUrls(Array.isArray(cur.images) ? cur.images as string[] : undefined),
+        videos: sanitizeUrls(Array.isArray(cur.videos) ? cur.videos as string[] : undefined),
+        body_data: cur.body_data || undefined,
+        // blog2 fields - include explicitly if present
+        blog2_title: (cur as any).blog2_title ?? undefined,
+        blog2_slug: (cur as any).blog2_slug ?? undefined,
+        blog2_body_html: (cur as any).blog2_body_html ?? undefined,
+        blog2_images: sanitizeUrls((cur as any).blog2_images !== undefined ? (cur as any).blog2_images as string[] : undefined),
+        blog2_videos: sanitizeUrls((cur as any).blog2_videos !== undefined ? (cur as any).blog2_videos as string[] : undefined),
       };
 
-      // If the editor cleared logo explicitly, still send if present (server will decide).
-      if (updated.logo_url) payload.logo_url = updated.logo_url;
+      // Handle blog_feature_image: if the `cur` object explicitly has the property (even null), include it in the payload.
+      if (Object.prototype.hasOwnProperty.call(cur, 'blog_feature_image')) {
+        const val = (cur as any).blog_feature_image;
+        if (val === null) payload.blog_feature_image = null;
+        else if (val && !String(val).startsWith('blob:')) payload.blog_feature_image = val;
+        else payload.blog_feature_image = undefined; // don't send blob: temporary URLs
+        // also include legacy `feature_image` key for servers expecting that name
+        if (payload.blog_feature_image !== undefined) payload.feature_image = payload.blog_feature_image;
+      }
 
-      const base = updated.source === "clients_blog2" ? "/api/admin/clients_blog2" : "/api/admin/clients";
-      const res = await fetch(`${base}/${updated.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      // Handle blog2_feature_image the same way
+      if (Object.prototype.hasOwnProperty.call(cur, 'blog2_feature_image')) {
+        const val2 = (cur as any).blog2_feature_image;
+        if (val2 === null) payload.blog2_feature_image = null;
+        else if (val2 && !String(val2).startsWith('blob:')) payload.blog2_feature_image = val2;
+        else payload.blog2_feature_image = undefined;
+        if (payload.blog2_feature_image !== undefined) payload.feature_image = payload.blog2_feature_image;
+      }
+
+      // include logo if present (avoid sending blob URLs)
+      if (Object.prototype.hasOwnProperty.call(cur, 'logo_url')) {
+        const lv = (cur as any).logo_url;
+        if (lv === null) payload.logo_url = null;
+        else if (lv && !String(lv).startsWith('blob:')) payload.logo_url = lv;
+      }
+
+      // DEBUG: capture payload
+      console.debug('[Admin] saveEdit - payload being sent:', payload);
+      try { setLastPayload && setLastPayload(payload); } catch {}
+
+      const base = cur.source === 'clients_blog2' ? '/api/admin/clients_blog2' : '/api/admin/clients';
+      const res = await fetch(`${base}/${cur.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((json && (json.error || json.message)) || `Server returned ${res.status}`);
 
-      setEditing(null);
-      setEditingLogoPreview(null);
-      setEditingFeaturePreview(null);
-      setEditingVideoPreview(null);
-      setEditingBlogFeaturePreview(null);
-      setStatus("Saved ✅");
+      // read and log response for diagnosis
+      const rawText = await res.text().catch(() => '');
+      let json: any = null;
+      try { json = rawText ? JSON.parse(rawText) : null; } catch (e) { json = null; }
+      console.debug('[Admin] saveEdit response status:', res.status, res.statusText);
+      console.debug('[Admin] saveEdit response body:', rawText, json);
+      try { setLastResponse && setLastResponse(json ?? rawText); } catch {}
+
+      if (!res.ok) {
+        const serverMsg = (json && (json.error || json.message)) || rawText || `Server returned ${res.status}`;
+        throw new Error(serverMsg);
+      }
+
+      // Try to get authoritative saved object from server (some backends don't return the updated object in the PATCH response)
+      let serverObj: any = null;
+      try {
+        const getRes = await fetch(`${base}/${cur.id}`, { method: 'GET', headers: { Accept: 'application/json' }, cache: 'no-store' });
+        if (getRes.ok) {
+          const t = await getRes.text().catch(() => '');
+          try { serverObj = t ? JSON.parse(t) : null; } catch { serverObj = null; }
+          serverObj = (serverObj && (serverObj.data || serverObj.client || serverObj.item)) || serverObj;
+        }
+      } catch (err) {
+        console.warn('Could not fetch updated item after PATCH:', err);
+        serverObj = null;
+      }
+
+      // Prefer server-returned updated object; fall back to parsed PATCH response; finally fallback to payload
+      const updatedObj = (json && (json.data || json.updated || json.client || json.item)) || serverObj || json || null;
+
+      if (updatedObj && typeof updatedObj === 'object') {
+        // update editing state with authoritative values (handle different key names)
+        const feature = updatedObj.blog_feature_image ?? updatedObj.feature_image ?? updatedObj.blogFeatureImage ?? null;
+        const blog2Feature = updatedObj.blog2_feature_image ?? updatedObj.blog2FeatureImage ?? null;
+        const logo = updatedObj.logo_url ?? updatedObj.logoUrl ?? updatedObj.logo ?? null;
+
+        setEditing((prev) => (prev ? {
+          ...prev,
+          blog_feature_image: feature === undefined ? prev?.blog_feature_image ?? null : (feature === null ? null : String(feature)),
+          blog2_feature_image: blog2Feature === undefined ? prev?.blog2_feature_image ?? null : (blog2Feature === null ? null : String(blog2Feature)),
+          logo_url: logo === undefined ? prev?.logo_url ?? null : (logo === null ? null : String(logo)),
+        } : prev));
+
+        setEditingFeaturePreview(feature ? String(feature) : null);
+        setEditingBlogFeaturePreview(blog2Feature ? String(blog2Feature) : null);
+        setEditingLogoPreview(logo ? String(logo) : null);
+
+        // update the item within the list so UI overview shows the new image immediately
+        setList((prev) => prev.map((it) => it.id === cur.id ? ({ ...it, blog_feature_image: feature ?? null, blog2_feature_image: blog2Feature ?? null, logo_url: logo ?? null }) : it));
+      } else {
+        // server didn't return updated object; use payload as fallback (only non-blob values)
+        if (payload.blog_feature_image !== undefined) {
+          setEditing((prev) => (prev ? { ...prev, blog_feature_image: payload.blog_feature_image } : prev));
+          setEditingFeaturePreview(payload.blog_feature_image ?? null);
+        }
+        if (payload.blog2_feature_image !== undefined) {
+          setEditing((prev) => (prev ? { ...prev, blog2_feature_image: payload.blog2_feature_image } : prev));
+          setEditingBlogFeaturePreview(payload.blog2_feature_image ?? null);
+        }
+        if (payload.logo_url !== undefined) {
+          setEditing((prev) => (prev ? { ...prev, logo_url: payload.logo_url } : prev));
+          setEditingLogoPreview(payload.logo_url ?? null);
+        }
+
+        // also update list from payload when possible
+        setList((prev) => prev.map((it) => it.id === cur.id ? ({ ...it, blog_feature_image: payload.blog_feature_image ?? it.blog_feature_image, blog2_feature_image: payload.blog2_feature_image ?? it.blog2_feature_image, logo_url: payload.logo_url ?? it.logo_url }) : it));
+      }
+
+      setStatus('Saved ✅');
+
+      // Close modal after a short delay to ensure UI reflects saved image (optional)
+      setTimeout(() => {
+        setEditing(null);
+        setEditingLogoPreview(null);
+        setEditingFeaturePreview(null);
+        setEditingVideoPreview(null);
+        setEditingBlogFeaturePreview(null);
+      }, 150);
+
       await fetchList();
     } catch (err: any) {
-      console.error("saveEdit error:", err);
-      setStatus("Save failed: " + (err?.message || "unknown"));
+      console.error('saveEdit error:', err);
+      setStatus('Save failed: ' + (err?.message || 'unknown'));
     }
   }
 
@@ -787,7 +962,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
               <div>
                 <label className="block text-sm font-medium">Images (1–4)</label>
                 <input ref={fileInputRef1} type="file" accept="image/*" multiple onChange={(e) => onFilesChange1(e.target.files)} />
-                {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
+                {(uploadingImages1 || uploadingFiles) && <div className="text-xs text-gray-500 mt-2">Uploading images…</div>}
                 <div className="mt-3 flex gap-3">
                   {previews1.map((src, idx) => (
                     <div key={idx} className="w-24 h-24 relative border overflow-hidden rounded">
@@ -800,7 +975,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
               <div>
                 <label className="block text-sm font-medium">Videos (0–4)</label>
                 <input ref={videoInputRef1} type="file" accept="video/*" multiple onChange={(e) => onVideosChange1(e.target.files)} />
-                {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
+                {(uploadingVideos1 || uploadingFiles) && <div className="text-xs text-gray-500 mt-2">Uploading videos…</div>}
                 <div className="mt-3 flex gap-3">
                   {videoPreviews1.map((src) => (
                     <div key={src} className="w-36 h-24 border rounded overflow-hidden">
@@ -864,7 +1039,12 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
 
                 {featureImageUrl1 ? (
                   <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-                    <Image src={featureImageUrl1} alt="feature1" fill style={{ objectFit: "contain" }} sizes="112px" />
+                    <img
+  src={featureImageUrl1 ?? ''}
+  alt="feature1"
+  style={{ width: '112px', height: '80px', objectFit: 'contain', display: 'block' }}
+  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+/>
                     <button
                       type="button"
                       aria-label="Remove feature image"
@@ -900,8 +1080,8 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
             </div>
 
             <div className="flex justify-end">
-              <button type="submit" disabled={uploadingFiles} className="px-4 py-2 bg-orange-500 text-white rounded">
-                {uploadingFiles ? "Creating…" : "Create Client Case Study"}
+              <button type="submit" disabled={uploadingFiles || uploadingLogo1 || uploadingFeature1 || uploadingImages1 || uploadingVideos1} className="px-4 py-2 bg-orange-500 text-white rounded">
+                {uploadingFiles || uploadingLogo1 || uploadingFeature1 || uploadingImages1 || uploadingVideos1 ? "Creating…" : "Create Client Case Study"}
               </button>
             </div>
           </form>
@@ -925,14 +1105,13 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
             <div>
               <label className="block text-sm font-medium">Blog Body *</label>
               <SimpleEditor value={blogBody2} onChange={(html) => setBlogBody2(html)} placeholder="Start typing Blog..." />
-              
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium">Blog Images (1–4)</label>
                 <input ref={fileInputRef2} type="file" accept="image/*" multiple onChange={(e) => onFilesChange2(e.target.files)} />
-                {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
+                {(uploadingImages2 || uploadingFiles) && <div className="text-xs text-gray-500 mt-2">Uploading images…</div>}
                 <div className="mt-3 flex gap-3">
                   {previews2.map((src, idx) => (
                     <div key={idx} className="w-24 h-24 relative border overflow-hidden rounded">
@@ -945,7 +1124,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
               <div>
                 <label className="block text-sm font-medium">Blog Videos (0–4)</label>
                 <input ref={videoInputRef2} type="file" accept="video/*" multiple onChange={(e) => onVideosChange2(e.target.files)} />
-                {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
+                {(uploadingVideos2 || uploadingFiles) && <div className="text-xs text-gray-500 mt-2">Uploading videos…</div>}
                 <div className="mt-3 flex gap-3">
                   {videoPreviews2.map((src) => (
                     <div key={src} className="w-36 h-24 border rounded overflow-hidden">
@@ -1009,7 +1188,12 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
 
                 {featureImageUrl2 ? (
                   <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-                    <Image src={featureImageUrl2} alt="feature2" fill style={{ objectFit: "contain" }} sizes="112px" />
+                    <img
+  src={featureImageUrl2 ?? ''}
+  alt="feature2"
+  style={{ width: '112px', height: '80px', objectFit: 'contain', display: 'block' }}
+  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+/>
                     <button
                       type="button"
                       aria-label="Remove feature image"
@@ -1045,8 +1229,8 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
             </div>
 
             <div className="flex justify-end">
-              <button type="submit" disabled={uploadingFiles} className="px-4 py-2 bg-sky-600 text-white rounded">
-                {uploadingFiles ? "Creating…" : "Create Blog"}
+              <button type="submit" disabled={uploadingFiles || uploadingLogo2 || uploadingFeature2 || uploadingImages2 || uploadingVideos2} className="px-4 py-2 bg-sky-600 text-white rounded">
+                {uploadingFiles || uploadingLogo2 || uploadingFeature2 || uploadingImages2 || uploadingVideos2 ? "Creating…" : "Create Blog"}
               </button>
             </div>
           </form>
@@ -1194,36 +1378,36 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
                           accept="image/*"
                           multiple
                           onChange={async (e) => {
-  const files = e.target.files;
-  if (!files || files.length === 0) return;
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
 
-  // immediate blob previews for UX
-  const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-  setEditing((prev) => (prev ? { ...prev, blog2_images: [...((prev.blog2_images as string[]) || []), ...tempUrls] } : prev));
+                            // immediate blob previews for UX
+                            const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+                            setEditing((prev) => (prev ? { ...prev, blog2_images: [...((prev.blog2_images as string[]) || []), ...tempUrls] } : prev));
 
-  setUploadingFiles(true);
-  // upload and replace previews with server URLs
-  try {
-    const uploaded = await uploadFilesToServer(Array.from(files));
-    setEditing((prev) => {
-      if (!prev) return prev;
-      // remove the temp blob urls we added and append server URLs instead.
-      const existing = (prev.blog2_images || []).filter((s: string) => !s.startsWith("blob:"));
-      return { ...prev, blog2_images: [...existing, ...uploaded] };
-    });
-    // revoke blob urls
-    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
-    setStatus(`Uploaded ${uploaded.length} image(s)`);
-  } catch (err: any) {
-    console.error("upload blog2 images failed:", err);
-    setStatus("Image upload failed: " + (err?.message || "unknown"));
-    // keep blob previews so user can retry; don't persist blob into DB
-  } finally {
-    setUploadingFiles(false);
-  }
-}}
+                            setEditingUploadingImages(true);
+                            setUploadingFiles(true);
+                            try {
+                              const uploaded = await uploadFilesToServer(Array.from(files));
+                              setEditing((prev) => {
+                                if (!prev) return prev;
+                                // remove the temp blob urls we added and append server URLs instead.
+                                const existing = (prev.blog2_images || []).filter((s: string) => !s.startsWith("blob:"));
+                                return { ...prev, blog2_images: [...existing, ...uploaded] };
+                              });
+                              // revoke blob urls
+                              tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+                              setStatus(`Uploaded ${uploaded.length} image(s)`);
+                            } catch (err: any) {
+                              console.error("upload blog2 images failed:", err);
+                              setStatus("Image upload failed: " + (err?.message || "unknown"));
+                            } finally {
+                              setEditingUploadingImages(false);
+                              setUploadingFiles(false);
+                            }
+                          }}
                         />
-                        {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
+                        {(editingUploadingImages || uploadingFiles) && <div className="text-xs text-gray-500 mt-2">Uploading images…</div>}
                         <div className="mt-3 grid grid-cols-3 gap-3">
                           {(editing.blog2_images || []).map((src: string, idx: number) => (
                             <div key={idx} className="relative w-full h-24 rounded overflow-hidden border">
@@ -1257,32 +1441,34 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
                           accept="video/*"
                           multiple
                           onChange={async (e) => {
-  const files = e.target.files;
-  if (!files || files.length === 0) return;
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
 
-  const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-  setEditing((prev) => (prev ? { ...prev, blog2_videos: [...((prev.blog2_videos as string[]) || []), ...tempUrls] } : prev));
-  setStatus(`Uploading ${files.length} video(s)...`);
+                            const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+                            setEditing((prev) => (prev ? { ...prev, blog2_videos: [...((prev.blog2_videos as string[]) || []), ...tempUrls] } : prev));
+                            setStatus(`Uploading ${files.length} video(s)...`);
 
-  setUploadingFiles(true);
-  try {
-    const uploaded = await uploadFilesToServer(Array.from(files));
-    setEditing((prev) => {
-      if (!prev) return prev;
-      const existing = (prev.blog2_videos || []).filter((s: string) => !s.startsWith("blob:"));
-      return { ...prev, blog2_videos: [...existing, ...uploaded] };
-    });
-    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
-    setStatus(`Uploaded ${uploaded.length} video(s)`);
-  } catch (err: any) {
-    console.error("upload blog2 videos failed:", err);
-    setStatus("Video upload failed: " + (err?.message || "unknown"));
-  } finally {
-    setUploadingFiles(false);
-  }
-}}
+                            setEditingUploadingVideos(true);
+                            setUploadingFiles(true);
+                            try {
+                              const uploaded = await uploadFilesToServer(Array.from(files));
+                              setEditing((prev) => {
+                                if (!prev) return prev;
+                                const existing = (prev.blog2_videos || []).filter((s: string) => !s.startsWith("blob:"));
+                                return { ...prev, blog2_videos: [...existing, ...uploaded] };
+                              });
+                              tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+                              setStatus(`Uploaded ${uploaded.length} video(s)`);
+                            } catch (err: any) {
+                              console.error("upload blog2 videos failed:", err);
+                              setStatus("Video upload failed: " + (err?.message || "unknown"));
+                            } finally {
+                              setEditingUploadingVideos(false);
+                              setUploadingFiles(false);
+                            }
+                          }}
                         />
-                        {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
+                        {(editingUploadingVideos || uploadingFiles) && <div className="text-xs text-gray-500 mt-2">Uploading videos…</div>}
                         <div className="mt-3 grid grid-cols-2 gap-3">
                           {(editing.blog2_videos || []).map((src: string, idx: number) => (
                             <div key={idx} className="relative w-full h-28 rounded overflow-hidden border bg-black/5 flex items-center justify-center">
@@ -1317,7 +1503,7 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
                             <button
                               type="button"
                               aria-label="Remove logo (editing)"
-                              onClick={() => setEditing((prev) => (prev ? { ...prev, logo_url: undefined } : prev))}
+                              onClick={() => setEditing((prev) => (prev ? { ...prev, logo_url: null } : prev))}
                               className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
                               title="Remove logo"
                             >
@@ -1351,11 +1537,16 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
                         <label className="block text-sm font-medium">Feature Image (optional)</label>
                         {editing.blog2_feature_image ? (
                           <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-                            <Image src={editing.blog2_feature_image} alt="feature" fill style={{ objectFit: "contain" }} sizes="112px" />
+                            <img
+  src={editing.blog2_feature_image ?? ''}
+  alt="feature"
+  style={{ width: '112px', height: '80px', objectFit: 'contain', display: 'block' }}
+  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+/>
                             <button
                               type="button"
                               aria-label="Remove blog2 feature image"
-                              onClick={() => setEditing((prev) => (prev ? { ...prev, blog2_feature_image: undefined } : prev))}
+                              onClick={() => setEditing((prev) => (prev ? { ...prev, blog2_feature_image: null } : prev))}
                               className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
                               title="Remove feature image"
                             >
@@ -1389,255 +1580,267 @@ if (selectedVideos1.length > 0) uploadedVideoUrls = await uploadFilesToServer(se
                 ) : (
                   /* ---------- existing full editor for Client rows (unchanged) ---------- */
                   /* ---------- REPLACE Client editor (inside edit modal) with this minimal + logo/feature + Blog block ---------- */
-<div className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium">Client Name *</label>
+                      <input
+                        value={editing.client_name || ""}
+                        onChange={(e) => setEditing((prev) => (prev ? { ...prev, client_name: e.target.value } : prev))}
+                        className="w-full border rounded px-2 py-1"
+                        required
+                      />
+                    </div>
 
-  <div>
-    <label className="block text-sm font-medium">Client Name *</label>
-    <input
-      value={editing.client_name || ""}
-      onChange={(e) => setEditing((prev) => (prev ? { ...prev, client_name: e.target.value } : prev))}
-      className="w-full border rounded px-2 py-1"
-      required
+                    <div>
+                      <label className="block text-sm font-medium">Case study Title *</label>
+                      <input
+                        value={editing.blog_title || ""}
+                        onChange={(e) => setEditing((prev) => (prev ? { ...prev, blog_title: e.target.value } : prev))}
+                        className="w-full border rounded px-2 py-1"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Case study Body *</label>
+                      <div className="border rounded" style={{ height: "240px", overflow: "auto", padding: 8, background: "white" }}>
+                        <SimpleEditor
+                          value={editing.blog_body_html || ""}
+                          onChange={(html) => setEditing((prev) => (prev ? { ...prev, blog_body_html: html } : prev))}
+                          placeholder="Start typing the blog..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Images */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Existing Images</label>
+                      {(!editing.images || editing.images.length === 0) ? (
+                        <div className="text-xs text-gray-500">No images attached.</div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-3">
+                          {(editing.images || []).map((src, idx) => (
+                            <div key={idx} className="relative w-full h-24 rounded overflow-hidden border">
+                              <div className="absolute right-2 top-2 z-20">
+                                <button
+                                  onClick={() => setEditing((prev) => {
+                                    if (!prev) return prev;
+                                    const next = (prev.images || []).filter((_, i) => i !== idx);
+                                    try { URL.revokeObjectURL(src); } catch {}
+                                    return { ...prev, images: next.length ? next : [] };
+                                  })}
+                                  className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
+                                  title="Remove image"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="w-full h-full relative"><Image src={src} alt={`image-${idx}`} fill style={{ objectFit: "cover" }} /></div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Add Images (1–4)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={async (e) => {
+                          const files = e.target.files;
+                          if (!files || files.length === 0) return;
+
+                          const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+                          setEditing((prev) => (prev ? { ...prev, images: [...(prev.images || []), ...tempUrls] } : prev));
+                          setStatus(`Uploading ${files.length} image(s)...`);
+
+                          setEditingUploadingImages(true);
+                          setUploadingFiles(true);
+                          try {
+                            const uploaded = await uploadFilesToServer(Array.from(files));
+                            setEditing((prev) => {
+                              if (!prev) return prev;
+                              const existing = (prev.images || []).filter((s: string) => !s.startsWith("blob:"));
+                              return { ...prev, images: [...existing, ...uploaded] };
+                            });
+                            tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+                            setStatus(`Uploaded ${uploaded.length} image(s)`);
+                          } catch (err: any) {
+                            console.error("upload images failed:", err);
+                            setStatus("Image upload failed: " + (err?.message || "unknown"));
+                          } finally {
+                            setEditingUploadingImages(false);
+                            setUploadingFiles(false);
+                          }
+                        }}
+                      />
+                      {(editingUploadingImages || uploadingFiles) && <div className="text-xs text-gray-500 mt-2">Uploading images…</div>}
+                    </div>
+
+                    {/* Videos */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Existing Videos</label>
+                      {(!editing.videos || editing.videos.length === 0) ? (
+                        <div className="text-xs text-gray-500">No videos attached.</div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          {(editing.videos || []).map((src, idx) => (
+                            <div key={idx} className="relative w-full h-28 rounded overflow-hidden border bg-black/5 flex items-center justify-center">
+                              <div className="absolute right-2 top-2 z-20">
+                                <button
+                                  onClick={() => setEditing((prev) => {
+                                    if (!prev) return prev;
+                                    const next = (prev.videos || []).filter((_, i) => i !== idx);
+                                    try { URL.revokeObjectURL(src); } catch {}
+                                    return { ...prev, videos: next.length ? next : [] };
+                                  })}
+                                  className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
+                                  title="Remove video"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <video src={src} controls className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium">Add Videos (0–4)</label>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        multiple
+                        onChange={async (e) => {
+                          const files = e.target.files;
+                          if (!files || files.length === 0) return;
+
+                          const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
+                          setEditing((prev) => (prev ? { ...prev, videos: [...(prev.videos || []), ...tempUrls] } : prev));
+                          setStatus(`Uploading ${files.length} video(s)...`);
+
+                          setEditingUploadingVideos(true);
+                          setUploadingFiles(true);
+                          try {
+                            const uploaded = await uploadFilesToServer(Array.from(files));
+                            setEditing((prev) => {
+                              if (!prev) return prev;
+                              const existing = (prev.videos || []).filter((s: string) => !s.startsWith("blob:"));
+                              return { ...prev, videos: [...existing, ...uploaded] };
+                            });
+                            tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
+                            setStatus(`Uploaded ${uploaded.length} video(s)`);
+                          } catch (err: any) {
+                            console.error("upload videos failed:", err);
+                            setStatus("Video upload failed: " + (err?.message || "unknown"));
+                          } finally {
+                            setEditingUploadingVideos(false);
+                            setUploadingFiles(false);
+                          }
+                        }}
+                      />
+                      {(editingUploadingVideos || uploadingFiles) && <div className="text-xs text-gray-500 mt-2">Uploading videos…</div>}
+                    </div>
+
+                    {/* Logo & Feature Image (with X remove) */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium">Client Logo (required)</label>
+                        {editing.logo_url ? (
+                          <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+                            <Image src={editing.logo_url} alt="logo" fill style={{ objectFit: "contain" }} sizes="112px" />
+                            <button
+                              type="button"
+                              aria-label="Remove logo (editing)"
+                              onClick={() => setEditing((prev) => (prev ? { ...prev, logo_url: null } : prev))}
+                              className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                              title="Remove logo"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setEditingLogoUploading(true);
+                              try {
+                                const url = await uploadFileToServer(file);
+                                setEditing((prev) => (prev ? { ...prev, logo_url: url } : prev));
+                                setStatus("Logo uploaded (editing)");
+                              } catch (err: any) {
+                                console.error("Logo upload error:", err);
+                                setStatus("Upload failed: " + (err?.message || err));
+                              } finally {
+                                setEditingLogoUploading(false);
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium">Client Feature Image (optional)</label>
+                        {editing.blog_feature_image ? (
+  <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
+    <img
+      src={editing.blog_feature_image ?? ''}
+      alt="feature"
+      style={{ width: '112px', height: '80px', objectFit: 'contain', display: 'block' }}
+      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
     />
+    <button
+      type="button"
+      aria-label="Remove feature image (editing)"
+      onClick={() => setEditing((prev) => (prev ? { ...prev, blog_feature_image: null } : prev))}
+      className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+      title="Remove feature image"
+    >
+      ✕
+    </button>
   </div>
-
-  <div>
-    <label className="block text-sm font-medium">Case study Title *</label>
-    <input
-      value={editing.blog_title || ""}
-      onChange={(e) => setEditing((prev) => (prev ? { ...prev, blog_title: e.target.value } : prev))}
-      className="w-full border rounded px-2 py-1"
-      required
-    />
-  </div>
-
-  <div>
-    <label className="block text-sm font-medium">Case study Body *</label>
-    <div className="border rounded" style={{ height: "240px", overflow: "auto", padding: 8, background: "white" }}>
-      <SimpleEditor
-        value={editing.blog_body_html || ""}
-        onChange={(html) => setEditing((prev) => (prev ? { ...prev, blog_body_html: html } : prev))}
-        placeholder="Start typing the blog..."
-      />
-    </div>
-  </div>
-
-  {/* Images */}
-  <div>
-    <label className="block text-sm font-medium mb-2">Existing Images</label>
-    {(!editing.images || editing.images.length === 0) ? (
-      <div className="text-xs text-gray-500">No images attached.</div>
-    ) : (
-      <div className="grid grid-cols-3 gap-3">
-        {(editing.images || []).map((src, idx) => (
-          <div key={idx} className="relative w-full h-24 rounded overflow-hidden border">
-            <div className="absolute right-2 top-2 z-20">
-              <button
-                onClick={() => setEditing((prev) => {
-                  if (!prev) return prev;
-                  const next = (prev.images || []).filter((_, i) => i !== idx);
-                  try { URL.revokeObjectURL(src); } catch {}
-                  return { ...prev, images: next.length ? next : [] };
-                })}
-                className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
-                title="Remove image"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="w-full h-full relative"><Image src={src} alt={`image-${idx}`} fill style={{ objectFit: "cover" }} /></div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-
-  <div>
-    <label className="block text-sm font-medium">Add Images (1–4)</label>
-    <input
-      type="file"
-      accept="image/*"
-      multiple
-      onChange={async (e) => {
-  const files = e.target.files;
-  if (!files || files.length === 0) return;
-
-  const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-  setEditing((prev) => (prev ? { ...prev, images: [...(prev.images || []), ...tempUrls] } : prev));
-  setStatus(`Uploading ${files.length} image(s)...`);
-
-  setUploadingFiles(true);
-  try {
-    const uploaded = await uploadFilesToServer(Array.from(files));
-    setEditing((prev) => {
-      if (!prev) return prev;
-      const existing = (prev.images || []).filter((s: string) => !s.startsWith("blob:"));
-      return { ...prev, images: [...existing, ...uploaded] };
-    });
-    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
-    setStatus(`Uploaded ${uploaded.length} image(s)`);
-  } catch (err: any) {
-    console.error("upload images failed:", err);
-    setStatus("Image upload failed: " + (err?.message || "unknown"));
-  } finally {
-    setUploadingFiles(false);
-  }
-}}
-    />
-    {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
-  </div>
-
-  {/* Videos */}
-  <div>
-    <label className="block text-sm font-medium mb-2">Existing Videos</label>
-    {(!editing.videos || editing.videos.length === 0) ? (
-      <div className="text-xs text-gray-500">No videos attached.</div>
-    ) : (
-      <div className="grid grid-cols-2 gap-3">
-        {(editing.videos || []).map((src, idx) => (
-          <div key={idx} className="relative w-full h-28 rounded overflow-hidden border bg-black/5 flex items-center justify-center">
-            <div className="absolute right-2 top-2 z-20">
-              <button
-                onClick={() => setEditing((prev) => {
-                  if (!prev) return prev;
-                  const next = (prev.videos || []).filter((_, i) => i !== idx);
-                  try { URL.revokeObjectURL(src); } catch {}
-                  return { ...prev, videos: next.length ? next : [] };
-                })}
-                className="rounded-full bg-black/60 hover:bg-black/80 text-white w-8 h-8 flex items-center justify-center shadow"
-                title="Remove video"
-              >
-                ✕
-              </button>
-            </div>
-            <video src={src} controls className="w-full h-full object-cover" />
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-
-  <div>
-    <label className="block text-sm font-medium">Add Videos (0–4)</label>
-    <input
-      type="file"
-      accept="video/*"
-      multiple
-      onChange={async (e) => {
-  const files = e.target.files;
-  if (!files || files.length === 0) return;
-
-  const tempUrls = Array.from(files).map((f) => URL.createObjectURL(f));
-  setEditing((prev) => (prev ? { ...prev, videos: [...(prev.videos || []), ...tempUrls] } : prev));
-  setStatus(`Uploading ${files.length} video(s)...`);
-
-  setUploadingFiles(true);
-  try {
-    const uploaded = await uploadFilesToServer(Array.from(files));
-    setEditing((prev) => {
-      if (!prev) return prev;
-      const existing = (prev.videos || []).filter((s: string) => !s.startsWith("blob:"));
-      return { ...prev, videos: [...existing, ...uploaded] };
-    });
-    tempUrls.forEach((u) => { try { if (u.startsWith("blob:")) URL.revokeObjectURL(u); } catch {} });
-    setStatus(`Uploaded ${uploaded.length} video(s)`);
-  } catch (err: any) {
-    console.error("upload videos failed:", err);
-    setStatus("Video upload failed: " + (err?.message || "unknown"));
-  } finally {
-    setUploadingFiles(false);
-  }
-}}
-    />
-    {uploadingFiles && <div className="text-xs text-gray-500 mt-2">Uploading ...</div>}
-  </div>
-
-  {/* Logo & Feature Image (with X remove) */}
-  <div className="grid md:grid-cols-2 gap-4">
-    <div>
-      <label className="block text-sm font-medium">Client Logo (required)</label>
-      {editing.logo_url ? (
-        <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-          <Image src={editing.logo_url} alt="logo" fill style={{ objectFit: "contain" }} sizes="112px" />
-          <button
-            type="button"
-            aria-label="Remove logo (editing)"
-            onClick={() => setEditing((prev) => (prev ? { ...prev, logo_url: undefined } : prev))}
-            className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
-            title="Remove logo"
-          >
-            ✕
-          </button>
-        </div>
-      ) : (
-        <input
-          type="file"
-          accept="image/*"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            setEditingLogoUploading(true);
-            try {
-              const url = await uploadFileToServer(file);
-              setEditing((prev) => (prev ? { ...prev, logo_url: url } : prev));
-              setStatus("Logo uploaded (editing)");
-            } catch (err: any) {
-              console.error("Logo upload error:", err);
-              setStatus("Upload failed: " + (err?.message || err));
-            } finally {
-              setEditingLogoUploading(false);
-            }
-          }}
-        />
-      )}
-    </div>
-
-    <div>
-      <label className="block text-sm font-medium">Client Feature Image (optional)</label>
-      {editing.blog_feature_image ? (
-        <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-          <Image src={editing.blog_feature_image} alt="feature" fill style={{ objectFit: "contain" }} sizes="112px" />
-          <button
-            type="button"
-            aria-label="Remove feature image (editing)"
-            onClick={() => setEditing((prev) => (prev ? { ...prev, blog_feature_image: undefined } : prev))}
-            className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
-            title="Remove feature image"
-          >
-            ✕
-          </button>
-        </div>
-      ) : (
-        <input
-          type="file"
-          accept="image/*"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            setEditingFeatureUploading(true);
-            try {
-              const url = await uploadFileToServer(file);
-              setEditing((prev) => (prev ? { ...prev, blog_feature_image: url } : prev));
-              setStatus("Feature uploaded (editing)");
-            } catch (err: any) {
-              console.error("Feature upload error:", err);
-              setStatus("Upload failed: " + (err?.message || err));
-            } finally {
-              setEditingFeatureUploading(false);
-            }
-          }}
-        />
-      )}
-    </div>
-  </div>
-
-</div>
+) : (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setEditingFeatureUploading(true);
+                              try {
+                                const url = await uploadFileToServer(file);
+                                setEditing((prev) => (prev ? { ...prev, blog_feature_image: url } : prev));
+                                setStatus("Feature uploaded (editing)");
+                              } catch (err: any) {
+                                console.error("Feature upload error:", err);
+                                setStatus("Upload failed: " + (err?.message || err));
+                              } finally {
+                                setEditingFeatureUploading(false);
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
               <div className="p-4 border-t flex justify-end gap-2">
                 <button onClick={() => setEditing(null)} className="px-3 py-1 bg-gray-200 rounded">Cancel</button>
-                <button onClick={() => saveEdit(editing)} className="px-3 py-1 bg-green-600 text-white rounded">Save</button>
+                <button
+                  onClick={() => saveEdit(editing)}
+                  disabled={uploadingFiles || editingLogoUploading || editingFeatureUploading || editingVideoUploading || editingBlogFeatureUploading || editingUploadingImages || editingUploadingVideos}
+                  className={`px-3 py-1 rounded ${uploadingFiles || editingLogoUploading || editingFeatureUploading || editingVideoUploading || editingBlogFeatureUploading || editingUploadingImages || editingUploadingVideos ? 'bg-gray-300 text-gray-700' : 'bg-green-600 text-white'}`}>
+                  {uploadingFiles || editingLogoUploading || editingFeatureUploading || editingVideoUploading || editingBlogFeatureUploading || editingUploadingImages || editingUploadingVideos ? 'Saving... (wait for uploads)' : 'Save'}
+                </button>
               </div>
             </div>
           </div>
