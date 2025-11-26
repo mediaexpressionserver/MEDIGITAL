@@ -256,7 +256,7 @@ async function uploadFileToServer(file: File): Promise<string> {
         // set initial list from whichever candidate responded first
         setList(normalized);
         setLoading(false);
-        setStatus(`Loaded ${normalized.length} client(s) from ${endpoint} (status ${res.status})`);
+        setStatus(`Loaded ${normalized.length} client's (status ${res.status})`);
 
         // Now also try to fetch clients_blog2 and merge (non-blocking)
         try {
@@ -286,7 +286,7 @@ async function uploadFileToServer(file: File): Promise<string> {
               const existingIds = new Set(normalized.map((x: any) => x.id));
               const combined = [...normalized, ...blog2Normalized.filter((r: any) => !existingIds.has(r.id))];
               setList(combined);
-              setStatus((s) => (s ? s + " + blog2 loaded" : `Loaded ${combined.length} clients including blog2`));
+              setStatus((s) => (s ? s + " + blogs loaded" : `Loaded ${combined.length} client(s) + blogs loaded`));
             }
           } else {
             // ignore non-OK for blog2 (optional)
@@ -955,6 +955,11 @@ async function uploadFileToServer(file: File): Promise<string> {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-6xl mx-auto p-6 space-y-8">
+        {status && (
+          <div role="status" aria-live="polite" className="mt-10 w-full mb-4 p-3 rounded bg-yellow-100 border border-yellow-300 text-yellow-900 text-sm">
+            {status}
+          </div>
+        )}
         <h1 className="text-2xl font-bold mb-4">Admin — Manage Clients & Blogs</h1>
 
         {/* ---------- CREATE PANELS: Client (left) + Blog (right) ---------- */}
@@ -1344,7 +1349,7 @@ async function uploadFileToServer(file: File): Promise<string> {
           )}
         </div>
 
-        {status && <div className="text-sm mt-4 text-gray-700">{status}</div>}
+
 
         {/* Edit modal (unchanged, handles both blog1 + blog2 fields) */}
         {editing && (
