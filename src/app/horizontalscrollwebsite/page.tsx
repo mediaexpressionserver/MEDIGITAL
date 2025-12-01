@@ -1972,8 +1972,8 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   </div>
 
   {/* Bottom Text */}
-  <div className="w-full h-[1px] bg-gradient-to-r from-[#EEAA45] via-gray-500 to-[#EEAA45] mt-10 translate-y-[-70px]"></div>
-  <p className="text-gray-400 text-sm mt-10 translate-y-[-80px]">
+  <div className="w-full h-[1px] bg-gradient-to-r from-[#EEAA45] via-gray-500 to-[#EEAA45] mt-10 translate-y-[-80px]"></div>
+  <p className="text-gray-400 text-sm mt-10 translate-y-[-100px]">
     Media Expression © 2025. All rights reserved.
   </p>
 </section>
