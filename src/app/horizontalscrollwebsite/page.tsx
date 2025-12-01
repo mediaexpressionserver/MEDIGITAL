@@ -1150,14 +1150,6 @@ useEffect(() => {
         Padivattom, Near Govt LP School, Padivattom, 682024, Kerala
       </p>
 
-      <a
-        href="https://maps.google.com/maps/place//data=!4m2!3m1!1s0x3b080d1caa1c847d:0xe65338c1c3b6b820?entry=s&sa=X&ved=2ahUKEwj6xqrF8ICRAxV7SmwGHSqAOsAQ4kB6BAgEEAA"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="underline block mt-2 text-sm"
-      >
-        View on Google Map
-      </a>
 
       <a
         href="tel:+918848226408"
@@ -1954,7 +1946,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   </div>
 
   {/* Social Media Icons */}
-  <div className="flex items-center justify-center space-x-8 mt-16">
+  <div className="flex items-center justify-center space-x-8 mt-16 translate-y-[-50px]">
     {[
       { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
       { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
@@ -1980,8 +1972,8 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   </div>
 
   {/* Bottom Text */}
-  <div className="w-full h-[1px] bg-gradient-to-r from-[#EEAA45] via-gray-500 to-[#EEAA45] mt-10"></div>
-  <p className="text-gray-400 text-sm mt-10">
+  <div className="w-full h-[1px] bg-gradient-to-r from-[#EEAA45] via-gray-500 to-[#EEAA45] mt-10 translate-y-[-70px]"></div>
+  <p className="text-gray-400 text-sm mt-10 translate-y-[-80px]">
     Media Expression © 2025. All rights reserved.
   </p>
 </section>
@@ -1990,9 +1982,9 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
       </div>
 
       {/* Spacer for total scroll height */}
-      <div 
-        style={{ 
-          height: spacerHeight ? `${spacerHeight}px` : "1600vh",
+      <div
+        style={{
+          height: spacerHeight ? `${Math.max(0, spacerHeight + 50)}px` : "1600vh",
         }}
       />
       {/* Floating scroll-to-top button (desktop) */}
