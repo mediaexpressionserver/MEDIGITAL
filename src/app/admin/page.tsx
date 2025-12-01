@@ -286,7 +286,7 @@ async function uploadFileToServer(file: File): Promise<string> {
               const existingIds = new Set(normalized.map((x: any) => x.id));
               const combined = [...normalized, ...blog2Normalized.filter((r: any) => !existingIds.has(r.id))];
               setList(combined);
-              setStatus((s) => (s ? s + " + blogs loaded" : `Loaded ${combined.length} client(s) + blogs loaded`));
+              setStatus((s) => (s ? s + " and Loaded all Blog's" : `Loaded ${combined.length} client(s) and Loaded all Blog's`));
             }
           } else {
             // ignore non-OK for blog2 (optional)

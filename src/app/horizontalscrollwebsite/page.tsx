@@ -1001,7 +1001,7 @@ useEffect(() => {
 <section id = "portfoliodesktop"
   className="min-h-screen flex flex-col justify-center relative bg-cover bg-center bg-no-repeat"
   style={{
-    backgroundImage: "url('/images/working-table-with-computer 1.png')",
+    backgroundImage: "url('/images/c2-final.png')",
   }}
 >
   {/* Dark overlay */}
@@ -1165,7 +1165,14 @@ useEffect(() => {
       >
         +91 88482 26408
       </a>
-
+      <br></br>
+      <a
+        href="tel:+9104842808241"
+        className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
+      >
+        0484 2808241
+      </a>
+      <br></br>
       <a
         href="mailto:info@mediaexpression.in"
         className="text-gray-300 mt-1 hover:text-[#EEAA45] transition-colors block text-sm"
@@ -1674,9 +1681,11 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
       </section>
 
 {/* Section 6 - Portfolio */}
-<section data-horizontal-section
+<section
+  data-horizontal-section
   id="portfoliodesktop"
-  className="w-screen h-screen relative flex items-center justify-between bg-gray-300 overflow-visible translate-x-0"
+  className="w-screen h-screen relative flex items-center justify-between overflow-visible  translate-x-0 bg-cover bg-center bg-no-repeat"
+  style={{ backgroundImage: "url('/images/c2-final.png')" }}
 >
   {/* Left side - Rectangle image */}
   <div className="w-1/2 relative h-screen flex items-center justify-start translate-x-[156px]">
@@ -1692,6 +1701,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
     </div>
   </div>
 
+ 
   <div className="absolute inset-0 rounded-lg flex flex-col justify-center items-start p-8 translate-y-[-150px] translate-x-[150px] z-20 pointer-events-none">
     <h2 className="text-5xl font-bold text-[#EEAA45] mb-4 pointer-events-auto">
       Our Portfolio
@@ -1901,6 +1911,13 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
         className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
       >
         +91 88482 26408
+      </a>
+      <br></br>
+      <a
+        href="tel:+9104842808241"
+        className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
+      >
+        0484 2808241
       </a>
 <br></br>
       <a
