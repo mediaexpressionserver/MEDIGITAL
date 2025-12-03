@@ -1001,7 +1001,7 @@ useEffect(() => {
 <section id = "portfoliodesktop"
   className="min-h-screen flex flex-col justify-center relative bg-cover bg-center bg-no-repeat"
   style={{
-    backgroundImage: "url('/images/c2-final.png')",
+    backgroundImage: "url('/images/Web page.png')",
   }}
 >
   {/* Dark overlay */}
@@ -1677,7 +1677,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   data-horizontal-section
   id="portfoliodesktop"
   className="w-screen h-screen relative flex items-center justify-between overflow-visible  translate-x-0 bg-cover bg-center bg-no-repeat"
-  style={{ backgroundImage: "url('/images/c2-final.png')" }}
+  style={{ backgroundImage: "url('/images/Web page.png')" }}
 >
   {/* Left side - Rectangle image */}
   <div className="w-1/2 relative h-screen flex items-center justify-start translate-x-[156px]">
@@ -1709,7 +1709,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   </div>
 
   {/* ABSOLUTE full-bleed carousel at the bottom of Section 6 */}
- <div className="absolute left-0 right-0 bottom-[-60] z-30 translate-y-[-200px]">
+ <div className="absolute left-0 right-0 bottom-[-60] z-30 translate-y-[-80px]">
   <div className="w-full bg-white shadow-xl h-[200px] flex items-center justify-center">
     {/* You can adjust h-[400px] → 300px / 500px depending on your design */}
     <div className="w-full max-w-none">
