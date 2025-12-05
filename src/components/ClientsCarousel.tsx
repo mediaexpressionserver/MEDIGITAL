@@ -274,8 +274,8 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
           {/* ⭐ UPDATED MODAL POSITION FOR MOBILE HERE ⭐ */}
           <div
             className={`relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6 transform ${
-              isMobile ? "translate-y-6" : "-translate-y-32"
-            } transition-transform`}
+              isMobile ? "translate-y-[-50px]" : "translate-y-[-50px]"
+            } transition-transform `}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -286,7 +286,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
             </button>
 
             <div className="flex justify-center mb-4">
-              <div className="relative w-80 h-40">
+              <div className="relative w-72 h-16">
                 {active.logo && (
                   <Image
                     src={active.logo}
@@ -299,11 +299,9 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
               </div>
             </div>
 
-            <h3 className="text-lg font-semibold text-center mb-2">
-              {active.title}
-            </h3>
+            <h3 className="text-lg font-semibold text-center mb-2">{active.title}</h3>
 
-            <div className="overflow-auto max-h-[48vh] text-sm mb-4 prose max-w-none">
+            <div className="overflow-auto max-h-[36vh] text-sm mb-4 prose max-w-none">
               <div dangerouslySetInnerHTML={{ __html: active.body }} />
             </div>
 

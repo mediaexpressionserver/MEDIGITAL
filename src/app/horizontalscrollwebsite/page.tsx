@@ -444,22 +444,44 @@ useEffect(() => {
   };
 }, [containerRef, verticalSectionsRef, viewportWidth, viewportHeight]);// depends on viewport sizes (mapping better when set)
 
-  // Mobile detection
+  // Mobile detection (viewport-based, not user agent)
   useEffect(() => {
-    const checkMobile = () => {
-      const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
-      const isTabletOrMobileUA = /iPhone|iPod|Android|Mobile|iPad|Tablet|PlayBook|Silk/i.test(ua);
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const isSmallScreen = width <= 1024 && height <= 1366;
-      const isDesktopMac = /Macintosh/i.test(ua) && !/iPad/i.test(ua);
-      const shouldUseMobileLayout = !isDesktopMac && (isTabletOrMobileUA || isSmallScreen);
-      setIsMobile(shouldUseMobileLayout);
+    if (typeof window === "undefined") return;
+
+    const mq = window.matchMedia("(max-width: 1024px)");
+
+    const update = () => {
+      try {
+        // Layout should depend ONLY on viewport, not user agent.
+        setIsMobile(Boolean(mq.matches));
+      } catch {
+        // fallback using viewport width
+        const w = window.innerWidth || 0;
+        setIsMobile(w <= 1024);
+      }
     };
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    update();
+
+    // Modern browsers
+    if (mq.addEventListener) {
+      mq.addEventListener("change", update);
+    } else {
+      // Fallback for older Safari
+      window.addEventListener("resize", update);
+      window.addEventListener("orientationchange", update);
+    }
+
+    return () => {
+      try {
+        if (mq.removeEventListener) {
+          mq.removeEventListener("change", update);
+        } else {
+          window.removeEventListener("resize", update);
+          window.removeEventListener("orientationchange", update);
+        }
+      } catch {}
+    };
   }, []);
 
   // Resize / initial sizes (only for desktop)
@@ -1157,7 +1179,6 @@ useEffect(() => {
       >
         +91 88482 26408
       </a>
-      <br></br>
       <a
         href="tel:+9104842808241"
         className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
@@ -1173,16 +1194,7 @@ useEffect(() => {
       </a>
     </div>
 
-    <div>
-      <h3 className="text-lg font-semibold mb-2">MEDIA SERVICES</h3>
-      <ul className="space-y-1 text-gray-300 text-sm">
-        <li>Media Consultancy</li>
-        <li>Media Strategy & Development</li>
-        <li>Media Planning</li>
-        <li>Media Buying</li>
-        <li>Media Plan Execution</li>
-      </ul>
-    </div>
+   
 
     <div>
       <h3 className="text-lg font-semibold mb-2">CREATIVE SERVICES</h3>
@@ -1682,12 +1694,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   {/* Left side - Rectangle image */}
   <div className="w-1/2 relative h-screen flex items-center justify-start translate-x-[156px]">
     <div className="w-[470px] h-screen relative">
-      <Image
-        src="/images/working-table-with-computer 1.png"
-        alt="Portfolio Rectangle"
-        fill
-        style={{ objectFit: "cover" }}
-      />
+      
       {/* black transparent overlay */}
       <div className="absolute inset-0 bg-black bg-opacity-65 z-10" />
     </div>
@@ -1709,7 +1716,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   </div>
 
   {/* ABSOLUTE full-bleed carousel at the bottom of Section 6 */}
- <div className="absolute left-0 right-0 bottom-[-60] z-30 translate-y-[-80px]">
+<div className="absolute left-0 right-0 bottom-0 z-30">
   <div className="w-full bg-white shadow-xl h-[200px] flex items-center justify-center">
     {/* You can adjust h-[400px] → 300px / 500px depending on your design */}
     <div className="w-full max-w-none">
@@ -1920,17 +1927,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
       </a>
     </div>
 
-    {/* MEDIA SERVICES */}
-    <div>
-      <h3 className="text-lg font-semibold mb-4">MEDIA SERVICES</h3>
-      <ul className="space-y-2 text-gray-300">
-        <li>Media Consultancy</li>
-        <li>Media Strategy & Development</li>
-        <li>Media Planning</li>
-        <li>Media Buying</li>
-        <li>Media Plan Execution</li>
-      </ul>
-    </div>
+    
 
     {/* CREATIVE SERVICES */}
     <div>
@@ -1942,6 +1939,17 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
         <li>Market Research & Analysis</li>
         <li>Media Communication Services</li>
       </ul>
+    </div>
+
+    {/* smiley image */}
+    <div className="flex flex-col items-center justify-center">
+      <Image
+        src="/images/Smiley.png"
+        alt="Smiley"
+        width={200}
+        height={200}
+        className="object-contain"
+      />
     </div>
   </div>
 
