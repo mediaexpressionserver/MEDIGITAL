@@ -911,8 +911,8 @@ useEffect(() => {
   {/* Content */}
   <div className="relative z-10">
     <div className="text-center mb-8">
-      <h2 className="text-6xl font-extrabold text-[#EEAA45] mb-6">
-        Our<br />Way
+      <h2 className="text-5xl font-extrabold text-[#EEAA45] mb-6">
+        Our Way
       </h2>
     </div>
 
@@ -1511,7 +1511,7 @@ return (
         >
           <div className="text-left z-10">
   <h2
-    className="text-7xl font-extrabold text-[#EEAA45] mb-6 translate-x-[-370px] translate-y-[100px]"
+    className="text-6xl font-extrabold text-[#EEAA45] mb-6 translate-x-[-370px] translate-y-[100px]"
     style={{
       textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)"
     }}
