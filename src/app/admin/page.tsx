@@ -117,47 +117,62 @@ export default function AdminPage() {
   }, []);
 
   /* ------------------ API helpers ------------------ */
-// replace existing uploadFileToServer in src/app/admin/page.tsx (or wherever you keep it)
 async function uploadFileToServer(file: File): Promise<string> {
+  if (!file) throw new Error('No file provided');
+  // client-side size guard to avoid sending huge payloads to the serverless function
+  try {
+    if (typeof file.size === 'number' && file.size > CLIENT_MAX_BYTES) {
+      throw new Error(`File too large: '${file.name}' is ${human(file.size)} — max allowed ${human(CLIENT_MAX_BYTES)}.`);
+    }
+  } catch (e) {
+    // in case CLIENT_MAX_BYTES isn't available for some reason, continue to attempt upload
+    // but provide a developer console message
+    console.warn('Could not check client-side file size before upload:', e);
+  }
+
   const fd = new FormData();
   fd.append('file', file);
+
   const res = await fetch('/api/uploads', { method: 'POST', body: fd });
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  const text = await res.text().catch(() => '');
 
-  // if server responded with HTML (error page), do not try to parse JSON
-  const contentType = res.headers.get('content-type') || '';
-  const text = await res.text();
-
+  // Handle non-OK responses with helpful messages
   if (!res.ok) {
-    // prefer JSON error message if available, otherwise show the HTML/text
+    // 413 is a special case — server rejected because payload too large (serverless limit)
+    if (res.status === 413) {
+      const head = text ? text.slice(0, 600) : '';
+      throw new Error(`Upload rejected: file too large (server). ${head ? 'Server response start: ' + head : ''}`);
+    }
+
+    // Prefer JSON error message when possible
     if (contentType.includes('application/json')) {
       try {
-        const j = JSON.parse(text);
+        const j = JSON.parse(text || '{}');
         throw new Error(j.error || j.message || JSON.stringify(j));
       } catch (e) {
         throw new Error(`Upload failed (${res.status})`);
       }
-    } else {
-      // show a short snippet of the HTML to help debugging (don't swallow it)
-      const head = text.slice(0, 800);
-      throw new Error(`Upload failed (${res.status}). Response is not JSON. Start: ${head}`);
     }
+
+    // Fallback: return first part of HTML/text to help debugging
+    const head = text ? text.slice(0, 800) : '';
+    throw new Error(`Upload failed (${res.status}). Response is not JSON. Start: ${head}`);
   }
 
-  // success: parse JSON safely
+  // Success: parse JSON if present
   if (contentType.includes('application/json')) {
     try {
-      const j = JSON.parse(text);
-      // support both single `url` or `urls`/`urls[]`
+      const j = JSON.parse(text || '{}');
       if (j.url) return j.url;
       if (Array.isArray(j.urls) && j.urls.length) return j.urls[0];
-      // fallback: if API returns `data` or `result`
       return j.url ?? j.publicUrl ?? j.data?.url ?? j.data?.publicUrl ?? JSON.stringify(j);
     } catch (err) {
       throw new Error('Upload succeeded but response JSON parsing failed');
     }
   }
 
-  // if not JSON but OK — return raw text (rare)
+  // If server returned plain text OK (rare), return it
   return text;
 }
 
@@ -1061,49 +1076,7 @@ async function uploadFileToServer(file: File): Promise<string> {
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium">Client Feature Image (optional)</label>
-
-                {featureImageUrl1 ? (
-                  <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-                    <img
-  src={featureImageUrl1 ?? ''}
-  alt="feature1"
-  style={{ width: '112px', height: '80px', objectFit: 'contain', display: 'block' }}
-  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-/>
-                    <button
-                      type="button"
-                      aria-label="Remove feature image"
-                      onClick={() => setFeatureImageUrl1("")}
-                      className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
-                      title="Remove feature image"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setUploadingFeature1(true);
-                      try {
-                        const url = await uploadFileToServer(file);
-                        setFeatureImageUrl1(url);
-                        setStatus("Feature uploaded (Client)");
-                      } catch (err: any) {
-                        console.error("Feature upload error:", err);
-                        setStatus("Upload failed: " + (err?.message || err));
-                      } finally {
-                        setUploadingFeature1(false);
-                      }
-                    }}
-                  />
-                )}
-              </div>
+              
             </div>
 
             <div className="flex justify-end">
@@ -1813,48 +1786,7 @@ async function uploadFileToServer(file: File): Promise<string> {
                         )}
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium">Client Feature Image (optional)</label>
-                        {editing.blog_feature_image ? (
-  <div className="relative w-28 h-20 bg-gray-50 border rounded flex items-center justify-center">
-    <img
-      src={editing.blog_feature_image ?? ''}
-      alt="feature"
-      style={{ width: '112px', height: '80px', objectFit: 'contain', display: 'block' }}
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-    />
-    <button
-      type="button"
-      aria-label="Remove feature image (editing)"
-      onClick={() => setEditing((prev) => (prev ? { ...prev, blog_feature_image: null } : prev))}
-      className="absolute -top-2 -right-2 bg-black text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
-      title="Remove feature image"
-    >
-      ✕
-    </button>
-  </div>
-) : (
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              setEditingFeatureUploading(true);
-                              try {
-                                const url = await uploadFileToServer(file);
-                                setEditing((prev) => (prev ? { ...prev, blog_feature_image: url } : prev));
-                                setStatus("Feature uploaded (editing)");
-                              } catch (err: any) {
-                                console.error("Feature upload error:", err);
-                                setStatus("Upload failed: " + (err?.message || err));
-                              } finally {
-                                setEditingFeatureUploading(false);
-                              }
-                            }}
-                          />
-                        )}
-                      </div>
+                  
                     </div>
                   </div>
                 )}

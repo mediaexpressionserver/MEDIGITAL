@@ -49,7 +49,16 @@ export default async function Blog2DetailPage({
       ? client.image
       : (client.images || client.image || []) as string[];
 
+  // prefer logo fields for the feature image (use logo as feature image);
+  // fall back to any existing feature/image if no logo is present
   const feature =
+    client.logo ??
+    client.logo_url ??
+    client.logoUrl ??
+    client.brand_logo ??
+    client.brandLogo ??
+    client.logo_image ??
+    client.logoImage ??
     client.blog_feature_image ??
     client.blogFeatureImage ??
     client.blog_feature_image_url ??
@@ -97,7 +106,7 @@ export default async function Blog2DetailPage({
                 src={feature}
                 alt={title}
                 fill
-                style={{ objectFit: "contain" }}
+                style={{ objectFit: "contain", objectPosition: "center top" }}
                 loading="lazy"
               />
             </div>

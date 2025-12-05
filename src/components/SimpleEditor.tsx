@@ -140,23 +140,65 @@ export default function SimpleEditor({ value, onChange, placeholder }: Props) {
 
   function handlePaste(e: React.ClipboardEvent) {
     e.preventDefault();
+
+    // Prefer rich HTML if available, fall back to plain text
+    const html = e.clipboardData.getData('text/html');
     const text = e.clipboardData.getData('text/plain');
+
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) {
       if (ref.current) {
-        ref.current.innerText += text;
+        if (html) {
+          // insert HTML into the editor
+          const temp = document.createElement('div');
+          temp.innerHTML = html;
+          while (temp.firstChild) ref.current.appendChild(temp.firstChild);
+        } else {
+          ref.current.innerText += text;
+        }
         onChange(ref.current.innerHTML);
       }
       return;
     }
+
     const range = sel.getRangeAt(0);
     range.deleteContents();
-    const node = document.createTextNode(text);
-    range.insertNode(node);
-    range.setStartAfter(node);
-    range.collapse(true);
+
+    if (html) {
+      // Insert HTML fragment preserving formatting
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const frag = document.createDocumentFragment();
+      while (temp.firstChild) frag.appendChild(temp.firstChild);
+      range.insertNode(frag);
+
+      // Move caret to the end of the inserted content
+      sel.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(ref.current as Node);
+      newRange.collapse(false);
+      sel.addRange(newRange);
+      onChange(ref.current?.innerHTML || '');
+      return;
+    }
+
+    // fallback: plain text (preserve line breaks)
+    const lines = text.split(/\r?\n/);
+    const fragment = document.createDocumentFragment();
+    lines.forEach((line, idx) => {
+      fragment.appendChild(document.createTextNode(line));
+      if (idx < lines.length - 1) fragment.appendChild(document.createElement('br'));
+    });
+
+    range.insertNode(fragment);
+
+    // place caret after inserted content
     sel.removeAllRanges();
-    sel.addRange(range);
+    const newRange = document.createRange();
+    newRange.selectNodeContents(ref.current as Node);
+    newRange.collapse(false);
+    sel.addRange(newRange);
+
     onChange(ref.current?.innerHTML || '');
   }
 
