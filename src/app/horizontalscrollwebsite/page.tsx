@@ -1023,7 +1023,7 @@ useEffect(() => {
 <section id = "portfoliodesktop"
   className="min-h-screen flex flex-col justify-center relative bg-cover bg-center bg-no-repeat"
   style={{
-    backgroundImage: "url('/images/Web page.png')",
+    backgroundImage: "url('/images/Web page1.PNG')",
   }}
 >
   {/* Dark overlay */}
@@ -1689,7 +1689,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   data-horizontal-section
   id="portfoliodesktop"
   className="w-screen h-screen relative flex items-center justify-between overflow-visible  translate-x-0 bg-cover bg-center bg-no-repeat"
-  style={{ backgroundImage: "url('/images/Web page.png')" }}
+  style={{ backgroundImage: "url('/images/Web page1.PNG')" }}
 >
   {/* Left side - Rectangle image */}
   <div className="w-1/2 relative h-screen flex items-center justify-start translate-x-[156px]">
@@ -1944,7 +1944,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
     {/* smiley image */}
     <div className="flex flex-col items-center justify-center">
       <Image
-        src="/images/Smiley.png"
+        src="/images/Logo.png"
         alt="Smiley"
         width={200}
         height={200}
