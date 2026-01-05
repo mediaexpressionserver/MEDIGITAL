@@ -1,0 +1,46 @@
+import nodemailer from "nodemailer";
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, error: "Method not allowed" });
+  }
+
+  const { name, mobile, email, message } = req.body || {};
+
+  if (!name || !email || !message) {
+    return res.status(400).json({
+      ok: false,
+      error: "Missing required fields"
+    });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_APP_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: `"Website Contact" <${process.env.SMTP_USER}>`,
+      to: process.env.RECEIVER_EMAIL,
+      subject: `${name} wanted to reach out to you`,
+      text: `
+Name: ${name}
+Mobile: ${mobile || "N/A"}
+Email: ${email}
+
+${message}
+      `
+    });
+
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: "Email failed" });
+  }
+}
