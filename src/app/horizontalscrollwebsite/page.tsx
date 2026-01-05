@@ -517,7 +517,7 @@ useEffect(() => {
   }, [isMobile]);
 
   // send email api
-  const API_URL = "http://127.0.0.1:5001/send-email";
+  const API_URL = "/api/send-email";
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
