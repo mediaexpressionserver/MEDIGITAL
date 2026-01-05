@@ -13,6 +13,7 @@
     "@editorjs/header": "^2.8.8",
     "@editorjs/link": "^2.6.2",
     "@editorjs/list": "^2.0.8",
+    "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.76.1",
     "@tiptap/core": "^3.10.1",
     "@tiptap/extension-link": "^3.10.1",

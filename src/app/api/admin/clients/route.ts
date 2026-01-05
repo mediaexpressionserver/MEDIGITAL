@@ -1,6 +1,7 @@
 // src/app/api/admin/clients/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 export const runtime = "nodejs";
 const TABLE = "clients";
