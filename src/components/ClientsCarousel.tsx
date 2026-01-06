@@ -266,7 +266,7 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="absolute top-0 left-0 w-full min-h-screen z-50 flex items-start justify-center p-4 translate-y-[-180px]"
           onClick={closeModal}
         >
           <div className="absolute inset-0 bg-black/60" />
