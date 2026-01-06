@@ -5,6 +5,9 @@ import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Header from "@/components/Header";
 import SimpleEditor from "@/components/SimpleEditor";
+import LogoutButton from "@/components/LogoutButton";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 /* ---------- types ---------- */
 type Client = {
@@ -31,8 +34,14 @@ type Client = {
   source?: "clients" | "clients_blog2";
 };
 
+
+  
 /* ---------- component ---------- */
 export default function AdminPage() {
+
+
+  const router = useRouter();
+  
   const [list, setList] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -95,6 +104,15 @@ export default function AdminPage() {
   const [uploadingVideos2, setUploadingVideos2] = useState(false);
   const [editingUploadingImages, setEditingUploadingImages] = useState(false);
   const [editingUploadingVideos, setEditingUploadingVideos] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+
+  
+useEffect(() => {
+  setMounted(true);
+}, []);
+
+
 
   useEffect(() => {
     fetchList();
@@ -115,8 +133,21 @@ export default function AdminPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+// ---- hydration guard (MUST be after all hooks) ----
 
+
+if (!mounted) {
+  return (
+    <div style={{ padding: 40 }}>
+      <h1>Loading admin…</h1>
+    </div>
+  );
+}
   /* ------------------ API helpers ------------------ */
+// ---- client-side upload limits (MUST be defined before use) ----
+const CLIENT_MAX_MB = 8;
+const CLIENT_MAX_BYTES = CLIENT_MAX_MB * 1024 * 1024;
+
 async function uploadFileToServer(file: File): Promise<string> {
   if (!file) throw new Error('No file provided');
   // client-side size guard to avoid sending huge payloads to the serverless function
@@ -373,8 +404,6 @@ async function uploadFileToServer(file: File): Promise<string> {
     return arr.filter((u) => !!u && !String(u).startsWith("blob:"));
   }
 
-  const CLIENT_MAX_MB = 8;
-  const CLIENT_MAX_BYTES = CLIENT_MAX_MB * 1024 * 1024;
 
   /* ------------------ upload helpers ------------------ */
 
@@ -968,7 +997,19 @@ async function uploadFileToServer(file: File): Promise<string> {
   /* ------------------ UI ------------------ */
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      {/* Admin top bar */}
+       <div className="sticky top-0 z-40 bg-white border-b">
+  <div className="max-w-6xl mx-auto px-6 py-3">
+    {/* Header */}
+    <Header />
+
+    {/* Logout below header */}
+    <div className="flex justify-end" style={{ marginTop: "50px" }}>
+      <LogoutButton />
+    </div>
+  </div>
+</div>
+
       <div className="max-w-6xl mx-auto p-6 space-y-8">
         {status && (
           <div role="status" aria-live="polite" className="mt-10 w-full mb-4 p-3 rounded bg-yellow-100 border border-yellow-300 text-yellow-900 text-sm">

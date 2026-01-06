@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,11 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-white text-black`}>
-        {/* ✅ Global Header visible on all pages */}
-        <Header />
-
-        {/* ✅ Main Page Content */}
-        <main className="relative min-h-screen w-full bg-fixed bg-cover bg-center bg-no-repeat">{/* adjust padding if header height changes */}
+        <main className="relative min-h-screen w-full bg-fixed bg-cover bg-center bg-no-repeat">
           {children}
         </main>
       </body>
