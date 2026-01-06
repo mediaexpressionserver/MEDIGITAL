@@ -519,47 +519,44 @@ useEffect(() => {
   // send email api
   const API_URL = "/api/send-email";
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const f = e.currentTarget;
-    const fd = new FormData(f);
-    const payload = {
-      name: fd.get("name")?.toString() ?? "",
-      email: fd.get("email")?.toString() ?? "",
-      mobile: fd.get("mobile")?.toString() ?? "",
-      message: fd.get("message")?.toString() ?? "",
-    };
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  const form = e.currentTarget;
 
-    try {
-      const controller = new AbortController();
-      const tid = setTimeout(() => controller.abort(), 15000);
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-        mode: "cors",
-      });
-
-      clearTimeout(tid);
-      const text = await res.text();
-      try {
-        const json = JSON.parse(text || "{}");
-        if (res.ok && json.ok) {
-          alert("✅ Message sent");
-          f.reset();
-          return;
-        }
-        alert("❌ Send failed: " + (json.error || text));
-      } catch {
-        alert("❌ Send failed (non-JSON): " + text);
-      }
-    } catch (err: any) {
-      console.error("Fetch error (client):", err);
-      alert("⚠️ Error sending message: " + (err?.message || err));
-    }
+  const fd = new FormData(form);
+  const payload = {
+    name: fd.get("name")?.toString().trim() || "",
+    email: fd.get("email")?.toString().trim() || "",
+    mobile: fd.get("mobile")?.toString().trim() || "",
+    message: fd.get("message")?.toString().trim() || "",
   };
+
+  // basic guard — don’t waste API calls
+  if (!payload.name || !payload.email || !payload.message) {
+    alert("Please fill all required fields");
+    return;
+  }
+
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data?.error || "Send failed");
+    }
+
+    alert("✅ Message sent successfully");
+    form.reset();
+  } catch (err: any) {
+    console.error("Send email failed:", err);
+    alert("❌ Failed to send message. Please try again.");
+  }
+};
 
   // scroll-to-top helper (used by the floating button)
   const scrollToTop = () => {
