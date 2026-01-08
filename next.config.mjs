@@ -14,7 +14,7 @@ const nextConfig = {
       // ✅ Supabase storage bucket (replace with your actual project ref if different)
       {
         protocol: "https",
-        hostname: "pyukwgwdycseqyvypavm.supabase.co",
+        hostname: "ymhjlnthzixrgagpuhdf.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
 

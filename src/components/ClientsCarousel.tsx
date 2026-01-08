@@ -274,8 +274,8 @@ export default function ClientsCarousel({ apiUrl = "/api/clients" }: ClientsCaro
           {/* ⭐ UPDATED MODAL POSITION FOR MOBILE HERE ⭐ */}
           <div
             className={`relative z-10 max-w-lg w-full bg-white rounded-lg shadow-lg p-6 transform ${
-              isMobile ? "translate-y-[-50px]" : "translate-y-[-50px]"
-            } transition-transform `}
+              isMobile ? "translate-y-0" : "translate-y-[-180px]"
+            } transition-transform`}
             onClick={(e) => e.stopPropagation()}
           >
             <button

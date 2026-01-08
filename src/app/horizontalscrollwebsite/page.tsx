@@ -840,20 +840,15 @@ useEffect(() => {
     <h2 className="text-4xl font-extrabold text-[#EEAA45] leading-tight mb-6 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.6)]">
       Ideas That<br />Break<br />Through.
     </h2>
-    <p>
-      We dont play it safe—we push ideas further. A team that tries,
-      learns, and reinvents until your brand{" "}
-      <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
+                   <p>
+      ME Digital is the creative and digital arm of Media Expression, a trusted media group shaping brands since 1995. Backed by decades of experience and guided by the vision of Mr. Sibi Chavara, we bring strategic clarity together with bold, contemporary creativity—helping brands stand out, speak clearly, and stay remembered.
     </p>
     <p className="mt-4">
-      Every idea begins as a spark — small, rough, and full of potential. What we do is nurture that spark into something memorable. We dive into insights, explore new angles, and shape concepts that feel alive. Our process is part intuition, part strategy, and entirely driven by passion.
-    </p>
+      Every idea starts with potential. We uncover insights, explore fresh perspectives, and shape concepts that feel relevant and alive. Our approach balances intuition with strategy, ensuring each idea is purposeful and well-defined. 
+       </p>
     <p className="mt-4">
-      We experiment fearlessly, polishing every thought until it reflects clarity and purpose. We rethink, rework, and reinvent until the message feels effortless. For us, creativity isn’t a moment — it’s a commitment.
-    </p>
-    <p className="mt-4">
-      We build ideas that connect emotionally, communicate intelligently, and stand confidently in a crowded world. Whether it’s a brand story, a campaign, or a single line of copy, we make sure it resonates. We’re here to craft work that feels distinctive, meaningful, and undeniably yours.
-    </p>
+      We refine with intent—challenging, evolving, and sharpening ideas until the message feels effortless and confident. Creativity, for us, is not a one-time spark but a disciplined pursuit of better thinking and stronger expression.
+       </p>
     <p className="mt-4">
       Because for us, “good enough” is never enough.
     </p>
@@ -1413,22 +1408,18 @@ return (
             </h2>
             <div className="mt-4 text-[15px] text-gray-600 w-full">
               <div className="pr-4 max-w-[600px]">
-                <p>
-                  We dont play it safe—we push ideas further. A team that tries,
-                  learns, and reinvents until your brand <span className="text-[#EEAA45]">speaks louder than the crowd.</span>
-                </p>
-                <p className="mt-4">
-                  Every idea begins as a spark — small, rough, and full of potential. What we do is nurture that spark into something memorable. We dive into insights, explore new angles, and shape concepts that feel alive. Our process is part intuition, part strategy, and entirely driven by passion.
-                </p>
-                <p className="mt-4">
-                  We experiment fearlessly, polishing every thought until it reflects clarity and purpose. We rethink, rework, and reinvent until the message feels effortless. For us, creativity isn’t a moment — it’s a commitment.
-                </p>
-                <p className="mt-4">
-                  We build ideas that connect emotionally, communicate intelligently, and stand confidently in a crowded world. Whether it’s a brand story, a campaign, or a single line of copy, we make sure it resonates. We’re here to craft work that feels distinctive, meaningful, and undeniably yours.
-                </p>
-                <p className="mt-4">
-                  Because for us, “good enough” is never enough.
-                </p>
+                               <p>
+      ME Digital is the creative and digital arm of Media Expression, a trusted media group shaping brands since 1995. Backed by decades of experience and guided by the vision of Mr. Sibi Chavara, we bring strategic clarity together with bold, contemporary creativity—helping brands stand out, speak clearly, and stay remembered.
+    </p>
+    <p className="mt-4">
+      Every idea starts with potential. We uncover insights, explore fresh perspectives, and shape concepts that feel relevant and alive. Our approach balances intuition with strategy, ensuring each idea is purposeful and well-defined. 
+       </p>
+    <p className="mt-4">
+      We refine with intent—challenging, evolving, and sharpening ideas until the message feels effortless and confident. Creativity, for us, is not a one-time spark but a disciplined pursuit of better thinking and stronger expression.
+       </p>
+    <p className="mt-4">
+      Because for us, “good enough” is never enough.
+    </p>
               </div>
             </div>
           </div>
