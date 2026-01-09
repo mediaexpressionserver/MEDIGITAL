@@ -8,7 +8,7 @@ export default function BackButton() {
   const router = useRouter();
 
   const handleClick = async () => {
-    const targetRoute = "/horizontalscrollwebsite";
+    const targetRoute = "/Home";
 
     // If already on target route, smooth-scroll immediately
     try {

@@ -184,10 +184,10 @@ const Header: React.FC = () => {
 
   // anchor -> route map (clicking header navigates to these pages first)
   const anchorRouteMap: Record<string, string> = {
-    "#ourwaydesktop": "/horizontalscrollwebsite",
-    "#servicesdesktop": "/horizontalscrollwebsite",
-    "#portfoliodesktop": "/horizontalscrollwebsite",
-    "#reachusdesktop": "/horizontalscrollwebsite",
+    "#ourwaydesktop": "/Home",
+    "#servicesdesktop": "/Home",
+    "#portfoliodesktop": "/Home",
+    "#reachusdesktop": "/Home",
   };
 
   // smooth scroll helper (used when already on the destination route)

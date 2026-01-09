@@ -45,7 +45,7 @@ export default function BackButtonClient() {
 
   // Desktop behavior (instant jump to section)
   const handleDesktopClick = async () => {
-    const targetRoute = "/horizontalscrollwebsite";
+    const targetRoute = "/Home";
     const hash = "#portfoliodesktop";
 
     try {

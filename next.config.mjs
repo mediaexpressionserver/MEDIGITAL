@@ -31,7 +31,7 @@ const nextConfig = {
     return [
       {
         source: "/",
-        destination: "/horizontalscrollwebsite",
+        destination: "/Home",
         permanent: false,
       },
     ];
