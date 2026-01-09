@@ -6,7 +6,6 @@ import Header from "@/components/Header";
 import { readClientsData } from "@/lib/data";
 import BackButtonClient from "./BackButtonClient"; // if present
 import MediaGallery from "@/components/MediaGallery";
-import ScrollAfterBack from "./ScrollAfterBack"; // client component for scroll behavior
 
 export const metadata = {
   title: "Blog2",
@@ -85,20 +84,18 @@ export default async function Blog2DetailPage({
           src="/images/Blogpagebg.png"
           alt=""
           fill
-          priority
           sizes="100vw"
-          style={{ objectFit: "cover" }}
+          style={{ objectFit: "cover", willChange: "transform" }}
         />
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
       <div className="relative z-10 max-w-screen-xl mx-auto px-6 py-16">
         {typeof BackButtonClient === "function" ? <BackButtonClient /> : null}
-        <ScrollAfterBack />
 
         <Header />
 
-        <article className="bg-white rounded-lg overflow-hidden">
+        <article className="bg-white rounded-lg overflow-hidden min-h-screen">
           {feature ? (
             <div className="relative w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
               {/* Preserve image aspect ratio with whitespace; use `object-contain` */}
@@ -106,8 +103,9 @@ export default async function Blog2DetailPage({
                 src={feature}
                 alt={title}
                 fill
+                priority
+                sizes="100vw"
                 style={{ objectFit: "contain", objectPosition: "center top" }}
-                loading="lazy"
               />
             </div>
           ) : (

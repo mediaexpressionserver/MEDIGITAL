@@ -264,7 +264,7 @@ export default async function Blog2DetailPage({
   };
 
   return (
-    <main className="relative min-h-screen w-full bg-fixed" style={bgStyle}>
+    <main className="relative min-h-screen w-full" style={bgStyle}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative z-10 max-w-screen-xl mx-auto px-6 py-16">
         {/* Back button client (client component) */}
@@ -272,7 +272,7 @@ export default async function Blog2DetailPage({
 
         <Header />
 
-        <article className="bg-white rounded-lg shadow overflow-hidden">
+        <article className="bg-white rounded-lg shadow overflow-hidden min-h-screen">
           {feature ? (
             <div className="w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
               {/*
@@ -281,7 +281,7 @@ export default async function Blog2DetailPage({
                 differ. If you prefer the image to be zoomed/cropped to fill the area, change
                 the class on the <img> from `object-contain` to `object-cover`.
               */}
-              <img src={feature} alt={title} loading="lazy" className="max-w-full max-h-full object-contain" />
+              <img src={feature} alt={title} className="max-w-full max-h-full object-contain" />
             </div>
           ) : (
             <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">No image</div>
