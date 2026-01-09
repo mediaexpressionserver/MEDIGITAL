@@ -17,12 +17,7 @@ export const metadata = {
 type AnyClient = Record<string, any>;
 
 async function fetchBlog2AdminRows(): Promise<AnyClient[]> {
-  const base =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined) ||
-    "http://localhost:3000";
-
-  const url = `${base.replace(/\/$/, "")}/api/admin/clients_blog2`;
+const url = "/api/admin/clients_blog2";
 
   try {
     const res = await fetch(url, { cache: "no-store" });
