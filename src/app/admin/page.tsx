@@ -519,8 +519,22 @@ function hasValidId<T extends { id: string | null }>(
       let uploadedImageUrls: string[] = [];
       let uploadedVideoUrls: string[] = [];
 
-      if (selectedFiles2.length > 0) uploadedImageUrls = await uploadFilesToServer(selectedFiles2);
-      if (selectedVideos2.length > 0) uploadedVideoUrls = await uploadFilesToServer(selectedVideos2);
+      // IMPORTANT:
+      // Blog images are usually uploaded earlier in onFilesChange2()
+      // and stored as public URLs in previews2.
+      // On create, selectedFiles2 is often EMPTY — so we MUST reuse previews2.
+      if (previews2.length > 0) {
+        uploadedImageUrls = sanitizeUrls(previews2) || [];
+      } else if (selectedFiles2.length > 0) {
+        uploadedImageUrls = await uploadFilesToServer(selectedFiles2);
+      }
+
+      // Videos follow the same logic
+      if (videoPreviews2.length > 0) {
+        uploadedVideoUrls = sanitizeUrls(videoPreviews2) || [];
+      } else if (selectedVideos2.length > 0) {
+        uploadedVideoUrls = await uploadFilesToServer(selectedVideos2);
+      }
 
       // Build payload (include top-level blog_title for server validation)
       const payload: any = {

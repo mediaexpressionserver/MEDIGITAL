@@ -81,10 +81,6 @@ export default async function Blog2DetailPage({
   const resolvedParams = await params;
   const slug = String(resolvedParams?.slug ?? "").trim();
 
-  // Debug: show raw incoming slug (helpful in Vercel logs)
-  // Remove these logs after debugging in prod
-  // eslint-disable-next-line no-console
-  console.log("[blog2] incomingSlug raw:", slug);
 
   // primary sources
   const clientsFromHelper: AnyClient[] = (await readClientsData()) ?? [];
@@ -142,9 +138,6 @@ export default async function Blog2DetailPage({
     decodedCanonical = canonicalSlug(slug);
   }
 
-  // Debug: show what we will match against
-  // eslint-disable-next-line no-console
-  console.log("[blog2] decodedCanonical:", decodedCanonical);
 
   const client = merged.find((c) => {
     // collect possible slug values from normalized object and raw payload
@@ -165,11 +158,14 @@ export default async function Blog2DetailPage({
       .map((x) => canonicalSlug(x))
       .filter(Boolean);
 
-    // Debug: emit candidate slugs per client id (helpful to inspect mismatches)
-    // eslint-disable-next-line no-console
-    console.log(`[blog2] candidate slugs for client id=${String(c?.id)}:`, candidateSlugs);
-
-    return candidateSlugs.includes(decodedCanonical) || canonicalSlug(c.id) === decodedCanonical;
+    return (
+      candidateSlugs.includes(decodedCanonical) ||
+      canonicalSlug(c.id) === decodedCanonical ||
+      canonicalSlug(c.blog2_title) === decodedCanonical ||
+      canonicalSlug(c.blog_title) === decodedCanonical ||
+      canonicalSlug(c._raw?.blog2_title) === decodedCanonical ||
+      canonicalSlug(c._raw?.blog_title) === decodedCanonical
+    );
   });
 
   if (!client) {
