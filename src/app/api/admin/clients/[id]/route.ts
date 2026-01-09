@@ -1,15 +1,24 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const id = params.id;
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+export async function GET(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { id } = await ctx.params;
+  if (!id) {
+    console.error('API called without id param', { id });
+    return NextResponse.json(
+  { error: "Missing id" },
+  { status: 400 }
+);
+  }
 
   try {
     const { data, error } = await supabaseAdmin
       .from('clients')
       .select('*')
-      .eq('id', id)
+      .eq('id', id.trim())
       .maybeSingle();
 
     if (error) {
@@ -24,9 +33,20 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const id = params.id;
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+export async function PATCH(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  console.log("ROUTE FILE HIT: [id]/route.ts");
+  const { id } = await ctx.params;
+  console.log("PARAMS VALUE:", { id });
+  if (!id) {
+    console.error('API called without id param', { id });
+    return NextResponse.json(
+  { error: "Missing id" },
+  { status: 400 }
+);
+  }
 
   let body: any = null;
   try {
@@ -34,7 +54,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   } catch (err) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
-
+  console.log("PATCH BODY:", body);
   const allowed = [
     'client_name',
     'blog_title',
@@ -69,15 +89,24 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
 
-  if (Object.keys(updateObj).length === 0) {
-    return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
+  const hasKeys = Object.keys(updateObj).length > 0;
+
+  if (!hasKeys) {
+    console.error("PATCH rejected: empty update object", { body });
+    return NextResponse.json(
+      { error: "No updatable fields provided" },
+      { status: 400 }
+    );
   }
 
+  console.log('PATCH /clients/[id]', { id, updateObj });
+
+  console.log("PATCH UPDATE OBJ:", updateObj);
   try {
     const { data, error } = await supabaseAdmin
       .from('clients')
       .update(updateObj)
-      .eq('id', id)
+      .eq('id', id.trim())
       .select()
       .maybeSingle();
 
@@ -93,12 +122,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const id = params.id;
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+export async function DELETE(
+  req: Request,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { id } = await ctx.params;
+  if (!id) {
+    console.error('API called without id param', { id });
+    return NextResponse.json(
+  { error: "Missing id" },
+  { status: 400 }
+);
+  }
 
   try {
-    const { error } = await supabaseAdmin.from('clients').delete().eq('id', id);
+    const { error } = await supabaseAdmin.from('clients').delete().eq('id', id.trim());
     if (error) {
       console.error('supabase delete error:', error);
       return NextResponse.json({ error: error.message || error }, { status: 500 });

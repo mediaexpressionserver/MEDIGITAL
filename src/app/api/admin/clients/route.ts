@@ -201,3 +201,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err?.message ?? "server error" }, { status: 500 });
   }
 }
+
+export async function PATCH() {
+  return NextResponse.json(
+    { error: "PATCH not supported on /api/admin/clients. Use /api/admin/clients/:id instead." },
+    { status: 405 }
+  );
+}
+
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "DELETE not supported on /api/admin/clients. Use /api/admin/clients/:id instead." },
+    { status: 405 }
+  );
+}

@@ -115,6 +115,11 @@ useEffect(() => {
 
 
   useEffect(() => {
+    function hasValidId<T extends { id: string | null }>(
+  x: T
+): x is T & { id: string } {
+  return typeof x.id === "string" && x.id.length > 0;
+}
     fetchList();
 
     return () => {
@@ -209,12 +214,14 @@ async function uploadFileToServer(file: File): Promise<string> {
 
   async function uploadFilesToServer(files: File[]) {
     if (!files || files.length === 0) return [] as string[];
-    const limited = files.slice(0, 4);
+
     const urls: string[] = [];
-    for (const f of limited) {
+
+    for (const f of files) {
       const u = await uploadFileToServer(f);
       urls.push(u);
     }
+
     return urls;
   }
 
@@ -236,7 +243,11 @@ async function uploadFileToServer(file: File): Promise<string> {
       setStatus("Upload failed: " + (err?.message || "unknown"));
     }
   }
-
+function hasValidId<T extends { id: string | null }>(
+  x: T
+): x is T & { id: string } {
+  return typeof x.id === "string" && x.id.length > 0;
+}
   async function fetchList() {
     setLoading(true);
     setStatus(null);
@@ -277,27 +288,29 @@ async function uploadFileToServer(file: File): Promise<string> {
         else if (Array.isArray(data.data)) raw = data.data;
         else if (data && typeof data === "object" && Object.keys(data).length > 0) raw = [data];
 
-        const normalized = raw.map((item: any, idx: number) => ({
-          id: String(item.id ?? item._id ?? item.client_id ?? item.clientId ?? item.slug ?? item.blog_slug ?? `tmp-${idx}`),
-          client_name: item.client_name ?? item.clientName ?? item.name ?? "",
-          logo_url: item.logo_url ?? item.logoUrl ?? item.logo ?? item.image ?? "",
-          blog_title: item.blog_title ?? item.blogTitle ?? item.title ?? "",
-          blog_slug: item.blog_slug ?? item.blogSlug ?? item.slug ?? "",
-          blog_body_html: item.blog_body_html ?? item.blogBodyHtml ?? item.body ?? item.blogBody ?? "",
-          blog_feature_image: item.blog_feature_image ?? item.blogFeatureImage ?? item.feature_image ?? null,
-          cta_text: item.cta_text ?? item.ctaText ?? "Read full Case study",
-          images: item.images ?? item.imageUrls ?? undefined,
-          videos: item.videos ?? item.videoUrls ?? item.videos_urls ?? undefined,
-          blog2_title: item.blog2_title ?? item.blog2Title ?? undefined,
-          blog2_slug: item.blog2_slug ?? item.blog2Slug ?? undefined,
-          blog2_body_html: item.blog2_body_html ?? item.blog2BodyHtml ?? undefined,
-          blog2_feature_image: item.blog2_feature_image ?? item.blog2FeatureImage ?? undefined,
-          blog2_images: item.blog2_images ?? item.blog2Images ?? undefined,
-          blog2_videos: item.blog2_videos ?? item.blog2Videos ?? undefined,
-          body_data: item.body_data ?? undefined,
-          created_at: item.created_at ?? item.createdAt ?? undefined,
-          source: "clients" as const,
-        }));
+        const normalized = raw
+          .map((item: any) => ({
+            id: item.id ? String(item.id) : null,
+            client_name: item.client_name ?? item.clientName ?? item.name ?? "",
+            logo_url: item.logo_url ?? item.logoUrl ?? item.logo ?? item.image ?? "",
+            blog_title: item.blog_title ?? item.blogTitle ?? item.title ?? "",
+            blog_slug: item.blog_slug ?? item.blogSlug ?? item.slug ?? "",
+            blog_body_html: item.blog_body_html ?? item.blogBodyHtml ?? item.body ?? item.blogBody ?? "",
+            blog_feature_image: item.blog_feature_image ?? item.blogFeatureImage ?? item.feature_image ?? null,
+            cta_text: item.cta_text ?? item.ctaText ?? "Read full Case study",
+            images: item.images ?? item.imageUrls ?? undefined,
+            videos: item.videos ?? item.videoUrls ?? item.videos_urls ?? undefined,
+            blog2_title: item.blog2_title ?? item.blog2Title ?? undefined,
+            blog2_slug: item.blog2_slug ?? item.blog2Slug ?? undefined,
+            blog2_body_html: item.blog2_body_html ?? item.blog2BodyHtml ?? undefined,
+            blog2_feature_image: item.blog2_feature_image ?? item.blog2FeatureImage ?? undefined,
+            blog2_images: item.blog2_images ?? item.blog2Images ?? undefined,
+            blog2_videos: item.blog2_videos ?? item.blog2Videos ?? undefined,
+            body_data: item.body_data ?? undefined,
+            created_at: item.created_at ?? item.createdAt ?? undefined,
+            source: "clients" as const,
+          }))
+          .filter(hasValidId);
 
         // set initial list from whichever candidate responded first
         setList(normalized);
@@ -315,19 +328,21 @@ async function uploadFileToServer(file: File): Promise<string> {
           if (res2.ok) {
             const data2 = await res2.json().catch(() => []);
             if (Array.isArray(data2) && data2.length) {
-              const blog2Normalized = data2.map((r: any) => ({
-                id: String(r.id),
-                client_name: r.client_name ?? r.clientName ?? r.name ?? "",
-                logo_url: r.logo_url ?? r.logoUrl ?? r.logo ?? r.image ?? "",
-                blog2_title: r.blog2_title ?? r.blog2Title ?? "",
-                blog2_slug: r.blog2_slug ?? r.blog2Slug ?? "",
-                blog2_body_html: r.blog2_body_html ?? r.blog2BodyHtml ?? r.blog_body_html ?? "",
-                blog2_feature_image: r.blog2_feature_image ?? r.blog2FeatureImage ?? (r.blog2_images && r.blog2_images[0]) ?? null,
-                blog2_images: Array.isArray(r.blog2_images) ? r.blog2_images : [],
-                blog2_videos: Array.isArray(r.blog2_videos) ? r.blog2_videos : [],
-                created_at: r.created_at ?? r.createdAt ?? null,
-                source: "clients_blog2" as const,
-              }));
+              const blog2Normalized = data2
+                .map((r: any) => ({
+                  id: r.id ? String(r.id) : null,
+                  client_name: r.client_name ?? r.clientName ?? r.name ?? "",
+                  logo_url: r.logo_url ?? r.logoUrl ?? r.logo ?? r.image ?? "",
+                  blog2_title: r.blog2_title ?? r.blog2Title ?? "",
+                  blog2_slug: r.blog2_slug ?? r.blog2Slug ?? "",
+                  blog2_body_html: r.blog2_body_html ?? r.blog2BodyHtml ?? r.blog_body_html ?? "",
+                  blog2_feature_image: r.blog2_feature_image ?? r.blog2FeatureImage ?? (r.blog2_images && r.blog2_images[0]) ?? null,
+                  blog2_images: Array.isArray(r.blog2_images) ? r.blog2_images : [],
+                  blog2_videos: Array.isArray(r.blog2_videos) ? r.blog2_videos : [],
+                  created_at: r.created_at ?? r.createdAt ?? null,
+                  source: "clients_blog2" as const,
+                }))
+                .filter(hasValidId);
 
               const existingIds = new Set(normalized.map((x: any) => x.id));
               const combined = [...normalized, ...blog2Normalized.filter((r: any) => !existingIds.has(r.id))];
@@ -352,34 +367,19 @@ async function uploadFileToServer(file: File): Promise<string> {
     console.error("fetchList last debug:", lastDebug);
   }
 
-  function openEdit(item: Partial<Client> | Record<string, any>) {
-    const i: Record<string, any> = item as any;
+  function openEdit(item: Client) {
+    if (!item?.id) {
+      console.error("Cannot edit item without DB id", item);
+      setStatus("This item cannot be edited (missing database ID).");
+      return;
+    }
 
-    setEditing({
-      id: String(i.id ?? i.client_id ?? i._id ?? i.clientId ?? i.slug ?? i.blog_slug ?? `tmp-edit-${Date.now()}`),
-      client_name: i.client_name ?? i.clientName ?? i.name ?? "",
-      blog_title: i.blog_title ?? i.blogTitle ?? i.title ?? "",
-      blog_slug: i.blog_slug ?? i.blogSlug ?? i.slug ?? "",
-      blog_body_html: i.blog_body_html ?? i.blogBodyHtml ?? i.body ?? "",
-      logo_url: i.logo_url ?? i.logoUrl ?? i.logo ?? i.image ?? "",
-      blog_feature_image: i.blog_feature_image ?? i.blogFeatureImage ?? i.feature_image ?? null,
-      images: i.images ?? i.imageUrls ?? undefined,
-      videos: i.videos ?? i.videoUrls ?? undefined,
-      blog2_title: i.blog2_title ?? i.blog2Title ?? undefined,
-      blog2_slug: i.blog2_slug ?? i.blog2Slug ?? undefined,
-      blog2_body_html: i.blog2_body_html ?? i.blog2BodyHtml ?? undefined,
-      blog2_feature_image: i.blog2_feature_image ?? i.blog2FeatureImage ?? null,
-      blog2_images: i.blog2_images ?? i.blog2Images ?? undefined,
-      blog2_videos: i.blog2_videos ?? i.blog2Videos ?? undefined,
-      body_data: i.body_data ?? undefined,
-      // IMPORTANT: preserve which source this row came from so modal can branch
-      source: (i.source as any) ?? (i.blog2_title || i.blog2_body_html ? "clients_blog2" : "clients"),
-    });
+    setEditing({ ...item });
 
-    setEditingLogoPreview(i.logo_url ?? i.logoUrl ?? i.logo ?? null);
-    setEditingFeaturePreview(i.blog_feature_image ?? i.blogFeatureImage ?? i.feature_image ?? null);
-    setEditingVideoPreview((i.videos && i.videos[0]) ?? null);
-    setEditingBlogFeaturePreview(i.blog2_feature_image ?? i.blog2FeatureImage ?? null);
+    setEditingLogoPreview(item.logo_url ?? null);
+    setEditingFeaturePreview(item.blog_feature_image ?? null);
+    setEditingVideoPreview(item.videos?.[0] ?? null);
+    setEditingBlogFeaturePreview(item.blog2_feature_image ?? null);
   }
 
   async function readResponse(res: Response) {
@@ -762,18 +762,33 @@ async function uploadFileToServer(file: File): Promise<string> {
   /* ------------------ delete + edit helpers ------------------ */
 
   async function handleDelete(item: Client) {
+    // HARD GUARD: never allow delete without a real DB id
+    if (!item?.id || String(item.id).startsWith("tmp-")) {
+      console.error("Refusing to delete item without valid id:", item);
+      setStatus("Delete blocked: invalid or missing ID.");
+      return;
+    }
+
     if (!confirm(`Delete "${item.blog_title || item.blog2_title || item.client_name}"? This will remove images.`)) return;
+
     setStatus("Deleting...");
     try {
-      const base = item.source === "clients_blog2" ? "/api/admin/clients_blog2" : "/api/admin/clients";
+      const base = item.source === "clients_blog2"
+        ? "/api/admin/clients_blog2"
+        : "/api/admin/clients";
+
       const res = await fetch(`${base}/${item.id}`, { method: "DELETE" });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((json && (json.error || json.message)) || `Server returned ${res.status}`);
+
+      if (!res.ok) {
+        throw new Error((json && (json.error || json.message)) || `Server returned ${res.status}`);
+      }
+
       setStatus("Deleted ✅");
       await fetchList();
     } catch (err: any) {
       console.error("handleDelete error:", err);
-      setStatus("Delete failed: " + (err.message || "unknown"));
+      setStatus("Delete failed: " + (err?.message || "unknown"));
     }
   }
 
@@ -836,7 +851,10 @@ async function uploadFileToServer(file: File): Promise<string> {
   // Save edited client (PATCH)
   async function saveEdit(updated: Client | null) {
     const cur = (updated && typeof updated === 'object') ? updated : editing;
-    if (!cur?.id) return;
+    if (!cur?.id) {
+      console.error("saveEdit called without id", cur);
+      throw new Error("Missing id");
+    }
 
     // prevent saving while any uploads are still in flight
     if (uploadingFiles || editingLogoUploading || editingFeatureUploading || editingVideoUploading || editingBlogFeatureUploading || editingUploadingImages || editingUploadingVideos) {
@@ -1307,8 +1325,20 @@ async function uploadFileToServer(file: File): Promise<string> {
                             <div className="text-xs text-gray-500">{c.blog_slug}</div>
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => openEdit(c)} className="px-2 py-1 bg-blue-500 text-white text-sm rounded">Edit</button>
-                            <button onClick={() => handleDelete(c)} className="px-2 py-1 bg-red-500 text-white text-sm rounded">Delete</button>
+                            <button
+                              disabled={!c.id}
+                              onClick={() => openEdit(c)}
+                              className="px-2 py-1 bg-blue-500 text-white text-sm rounded disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              disabled={!c.id}
+                              onClick={() => handleDelete(c)}
+                              className="px-2 py-1 bg-red-500 text-white text-sm rounded disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
                         <div className="mt-2 text-xs text-gray-700 line-clamp-3" dangerouslySetInnerHTML={{ __html: c.blog_body_html || "" }} />
@@ -1350,8 +1380,20 @@ async function uploadFileToServer(file: File): Promise<string> {
                             <div className="text-xs text-gray-500">{c.blog2_slug}</div>
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => openEdit(c)} className="px-2 py-1 bg-blue-500 text-white text-sm rounded">Edit</button>
-                            <button onClick={() => handleDelete(c)} className="px-2 py-1 bg-red-500 text-white text-sm rounded">Delete</button>
+                            <button
+                              disabled={!c.id}
+                              onClick={() => openEdit(c)}
+                              className="px-2 py-1 bg-blue-500 text-white text-sm rounded disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              disabled={!c.id}
+                              onClick={() => handleDelete(c)}
+                              className="px-2 py-1 bg-red-500 text-white text-sm rounded disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
                         <div className="mt-2 text-xs text-gray-700 line-clamp-3" dangerouslySetInnerHTML={{ __html: c.blog2_body_html || "" }} />
