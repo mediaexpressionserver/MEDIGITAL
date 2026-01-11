@@ -140,23 +140,6 @@ const Header: React.FC = () => {
     };
   }, [pathname, anchorIds]);
 
-  // listen for header-scroll-to events (dispatched by header after navigation)
-  useEffect(() => {
-    const onHeaderScrollTo = (ev: Event) => {
-      try {
-        const detail = (ev as CustomEvent).detail as string | undefined;
-        if (!detail) return;
-        const id = detail.replace(/^#/, "");
-        const el = document.getElementById(id);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-      } catch (err) {
-        // ignore
-      }
-    };
-    window.addEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
-    return () => window.removeEventListener("header-scroll-to", onHeaderScrollTo as EventListener);
-  }, []);
-
   // hide header on certain routes / search / hash substrings (existing rule)
   const hideSubstrings = ["horizontalscroll", "horizontal-scroll", "horizontal"];
   const pathnameLower = (pathname || "").toLowerCase();
@@ -182,80 +165,27 @@ const Header: React.FC = () => {
     return null;
   }
 
-  // anchor -> route map (clicking header navigates to these pages first)
-  const anchorRouteMap: Record<string, string> = {
-    "#ourwaydesktop": "/Home",
-    "#servicesdesktop": "/Home",
-    "#portfoliodesktop": "/Home",
-    "#reachusdesktop": "/Home",
-  };
-
-  // smooth scroll helper (used when already on the destination route)
-  const smoothScrollTo = (hashVal: string) => {
-    const id = hashVal.replace(/^#/, "");
-    const el = typeof document !== "undefined" ? document.getElementById(id) : null;
-    if (!el) {
-      // not found yet — caller may rely on header-scroll-to fallback
-      return false;
-    }
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    try {
-      history.replaceState(null, "", "#" + id);
-    } catch {
-      /* ignore */
-    }
-    return true;
-  };
-
-  // central click handler for header links
-  const handleClick = async (e: React.MouseEvent, href: string) => {
+  const handleClick = (e: React.MouseEvent, href: string) => {
     const closeMobile = () => setMobileOpen(false);
 
-    // route links (e.g. /blog)
+    // normal route links
     if (href.startsWith("/")) {
       e.preventDefault();
       closeMobile();
-      try {
-        await router.push(href);
-      } catch (err) {
-        console.warn("[Header] router.push failed:", err);
-      }
+      router.push(href);
       return;
     }
 
-    // anchor/hash links
+    // anchor links — always navigate with hash in ONE step
     if (href.startsWith("#")) {
       e.preventDefault();
       closeMobile();
 
-      const targetRoute = anchorRouteMap[href] ?? "/";
-
-      // if already on the target route, scroll immediately
-      if (pathname === targetRoute) {
-        smoothScrollTo(href);
-        return;
-      }
-
-      // otherwise navigate to the route, then dispatch an event to scroll when ready
-      try {
-        await router.push(targetRoute);
-      } catch (err) {
-        console.warn("[Header] router.push failed for anchor navigation:", err);
-      }
-
-      // small delay then notify destination page to scroll
-      setTimeout(() => {
-        try {
-          window.dispatchEvent(new CustomEvent("header-scroll-to", { detail: href }));
-        } catch (err) {
-          console.warn("[Header] failed to dispatch header-scroll-to event", err);
-        }
-      }, 200);
-
+      // Always include hash in navigation.
+      // Browser + Next.js will handle scroll AFTER render.
+      router.push(`/Home${href}`);
       return;
     }
-
-    // other schemes: let browser handle
   };
 
   const isRouteActive = (href: string) => {
