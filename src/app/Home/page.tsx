@@ -1165,25 +1165,25 @@ useEffect(() => {
       </p>
 
 
-      <a
+      <Link
         href="tel:+918848226408"
         className="mt-4 font-semibold text-base hover:text-[#EEAA45] transition-colors block"
       >
         +91 88482 26408
-      </a>
-      <a
+      </Link>
+      <Link
         href="tel:+9104842808241"
         className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
       >
         0484 2808241
-      </a>
+      </Link>
       <br></br>
-      <a
+      <Link
         href="mailto:info@mediaexpression.in"
         className="text-gray-300 mt-1 hover:text-[#EEAA45] transition-colors block text-sm"
       >
         info@mediaexpression.in
-      </a>
+      </Link>
     </div>
 
    
@@ -1893,26 +1893,26 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
         View on Google Map
       </a>
 
-      <a
+      <Link
         href="tel:+918848226408"
         className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
       >
         +91 88482 26408
-      </a>
+      </Link>
       <br></br>
-      <a
+      <Link
         href="tel:+9104842808241"
         className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
       >
         0484 2808241
-      </a>
+      </Link>
 <br></br>
-      <a
+      <Link
         href="mailto:info@mediaexpression.in"
         className="text-gray-300 mt-1 hover:text-[#EEAA45] transition-colors"
       >
         info@mediaexpression.in
-      </a>
+      </Link>
     </div>
 
     
