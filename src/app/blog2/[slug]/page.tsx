@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import { readClientsData } from "@/lib/data";
 import MediaGalleryClient from "@/components/MediaGallery"; // client wrapper (ssr:false inside)
 import Image from "next/image";
+import { headers } from "next/headers";
 
 // Import the client wrapper that handles the sessionStorage flag and history.back()
 import BackButtonClient from "./BackButtonClient";
@@ -17,17 +18,35 @@ export const metadata = {
 type AnyClient = Record<string, any>;
 
 async function fetchBlog2AdminRows(): Promise<AnyClient[]> {
-const url = "/api/admin/clients_blog2";
-
   try {
+    const h = await headers();
+    const host = h.get("host");
+
+    if (!host) {
+      console.error("Missing host header");
+      return [];
+    }
+
+    const protocol =
+      process.env.NODE_ENV === "development" ? "http" : "https";
+
+    const url = `${protocol}://${host}/api/admin/clients_blog2`;
+
     const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error("API failed:", res.status);
+      return [];
+    }
+
     const json = await res.json();
+
     if (Array.isArray(json)) return json;
-    if (json && Array.isArray(json.data)) return json.data;
-    if (json && Array.isArray(json.clients)) return json.clients;
+    if (json?.data && Array.isArray(json.data)) return json.data;
+    if (json?.clients && Array.isArray(json.clients)) return json.clients;
+
     return [];
-  } catch {
+  } catch (err) {
+    console.error("fetchBlog2AdminRows error:", err);
     return [];
   }
 }
