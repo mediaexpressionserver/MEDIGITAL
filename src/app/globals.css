@@ -67,3 +67,16 @@ img {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
+
+.blog-preview * {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: 100%;
+}
+
+.blog-preview img,
+.blog-preview video,
+.blog-preview table {
+  max-width: 100% !important;
+  height: auto !important;
+}

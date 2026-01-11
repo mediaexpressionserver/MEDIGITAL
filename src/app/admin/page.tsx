@@ -1029,6 +1029,21 @@ function hasValidId<T extends { id: string | null }>(
   /* ------------------ UI ------------------ */
   return (
     <div className="min-h-screen bg-gray-50">
+      <style jsx global>{`
+        .blog-preview * {
+          margin: 0 !important;
+          padding: 0 !important;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+
+        .blog-preview img,
+        .blog-preview video,
+        .blog-preview table {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+      `}</style>
       {/* Admin top bar */}
        <div className="sticky top-0 z-40 bg-white border-b">
   <div className="max-w-6xl mx-auto px-6 py-3">
@@ -1323,7 +1338,7 @@ function hasValidId<T extends { id: string | null }>(
                 {list
                   .filter((c) => (c.blog_title && String(c.blog_title).trim()) || (c.blog_body_html && String(c.blog_body_html).trim()))
                   .map((c) => (
-                    <div key={`b1-${c.id}`} className="bg-white p-4 rounded shadow flex gap-4">
+                    <div key={`b1-${c.id}`} className="bg-white p-4 rounded shadow flex gap-4 overflow-hidden">
                       <div className="w-28 h-20 relative flex-shrink-0">
                         {c.logo_url ? (
                           <Image src={c.logo_url} alt={c.client_name || "logo"} fill style={{ objectFit: "contain" }} sizes="112px" />
@@ -1331,14 +1346,14 @@ function hasValidId<T extends { id: string | null }>(
                           <div className="bg-gray-100 w-full h-full flex items-center justify-center text-xs text-gray-400">No logo</div>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start relative z-10">
                           <div>
                             <div className="text-sm text-gray-600">{c.client_name}</div>
                             <div className="font-semibold">{c.blog_title}</div>
                             <div className="text-xs text-gray-500">{c.blog_slug}</div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-shrink-0">
                             <button
                               disabled={!c.id}
                               onClick={() => openEdit(c)}
@@ -1355,7 +1370,15 @@ function hasValidId<T extends { id: string | null }>(
                             </button>
                           </div>
                         </div>
-                        <div className="mt-2 text-xs text-gray-700 line-clamp-3" dangerouslySetInnerHTML={{ __html: c.blog_body_html || "" }} />
+<div
+  className="mt-3 text-xs text-gray-700 overflow-hidden break-words blog-preview relative z-0"
+  style={{
+    display: "-webkit-box",
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: "vertical",
+  }}
+  dangerouslySetInnerHTML={{ __html: c.blog2_body_html || "" }}
+/>
                       </div>
                     </div>
                   ))}
@@ -1378,7 +1401,7 @@ function hasValidId<T extends { id: string | null }>(
                 {list
                   .filter((c) => (c.blog2_title && String(c.blog2_title).trim()) || (c.blog2_body_html && String(c.blog2_body_html).trim()))
                   .map((c) => (
-                    <div key={`b2-${c.id}`} className="bg-white p-4 rounded shadow flex gap-4">
+                    <div key={`b2-${c.id}`} className="bg-white p-4 rounded shadow flex gap-4 overflow-hidden">
                       <div className="w-28 h-20 relative flex-shrink-0">
                         {c.logo_url ? (
                           <Image src={c.logo_url} alt={c.client_name || "logo"} fill style={{ objectFit: "contain" }} sizes="112px" />
@@ -1386,14 +1409,14 @@ function hasValidId<T extends { id: string | null }>(
                           <div className="bg-gray-100 w-full h-full flex items-center justify-center text-xs text-gray-400">No logo</div>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start relative z-10">
                           <div>
                             <div className="text-sm text-gray-600">{c.client_name}</div>
                             <div className="font-semibold">{c.blog2_title}</div>
                             <div className="text-xs text-gray-500">{c.blog2_slug}</div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-shrink-0">
                             <button
                               disabled={!c.id}
                               onClick={() => openEdit(c)}
@@ -1410,7 +1433,15 @@ function hasValidId<T extends { id: string | null }>(
                             </button>
                           </div>
                         </div>
-                        <div className="mt-2 text-xs text-gray-700 line-clamp-3" dangerouslySetInnerHTML={{ __html: c.blog2_body_html || "" }} />
+<div
+  className="mt-3 text-xs text-gray-700 overflow-hidden break-words blog-preview relative z-0"
+  style={{
+    display: "-webkit-box",
+    WebkitLineClamp: 3,
+    WebkitBoxOrient: "vertical",
+  }}
+  dangerouslySetInnerHTML={{ __html: c.blog2_body_html || "" }}
+/>
                       </div>
                     </div>
                   ))}
