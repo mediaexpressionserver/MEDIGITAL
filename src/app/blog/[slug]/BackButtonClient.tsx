@@ -43,48 +43,15 @@ export default function BackButtonClient() {
     };
   }, [detectMobile]);
 
-  // Desktop behavior (instant jump to section)
-  const handleDesktopClick = async () => {
-    const targetRoute = "/Home";
-    const hash = "#portfoliodesktop";
+  const handleDesktopClick = () => {
+    const targetUrl = "/Home#portfoliodesktop";
 
+    // Always navigate with hash in a single step
     try {
-      if (typeof window !== "undefined" && window.location.pathname === targetRoute) {
-        const el = document.getElementById("portfoliodesktop");
-        if (el) {
-          // update URL hash first so history/state reflects destination
-          try {
-            history.replaceState(null, "", hash);
-          } catch {}
-
-          // instant jump (no smooth) as requested
-          el.scrollIntoView({ behavior: "auto", block: "start" });
-          return;
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-
-    try {
-      await router.push(targetRoute);
+      router.push(targetUrl);
     } catch (err) {
       console.warn("[BackButtonClient] router.push failed:", err);
     }
-
-    // dispatch event after a short delay so the destination can hydrate/listen
-    // (reduced to 50ms to trigger earlier)
-    setTimeout(() => {
-      try {
-        window.dispatchEvent(
-          new CustomEvent("header-scroll-to", {
-            detail: hash,
-          })
-        );
-      } catch (err) {
-        console.warn("[BackButtonClient] failed to dispatch header-scroll-to", err);
-      }
-    }, 50);
   };
 
   // Mobile behavior
