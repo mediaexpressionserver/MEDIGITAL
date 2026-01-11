@@ -7,6 +7,7 @@ import { readClientsData } from "@/lib/data";
 import MediaGalleryClient from "@/components/MediaGallery"; // client wrapper (ssr:false inside)
 import Image from "next/image";
 import { headers } from "next/headers";
+import { getClientsBlog2 } from "@/lib/getClientsBlog2";
 
 // Import the client wrapper that handles the sessionStorage flag and history.back()
 import BackButtonClient from "./BackButtonClient";
@@ -98,7 +99,7 @@ export default async function Blog2DetailPage({
 
   // primary sources
   const clientsFromHelper: AnyClient[] = (await readClientsData()) ?? [];
-  const blog2Rows: AnyClient[] = await fetchBlog2AdminRows();
+  const blog2Rows: AnyClient[] = await getClientsBlog2();
 
   // merge/normalize — keep semantics same as before
   const byId = new Map<string, AnyClient>();

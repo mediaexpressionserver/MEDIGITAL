@@ -3,9 +3,9 @@
 
 import Image from "next/image";
 import Header from "@/components/Header";
-import { readClientsData } from "@/lib/data";
 import BackButtonClient from "./BackButtonClient"; // if present
 import MediaGallery from "@/components/MediaGallery";
+import { getClientsBlog } from "@/lib/getClientsBlog";
 
 export const metadata = {
   title: "Blog2",
@@ -19,11 +19,16 @@ export default async function Blog2DetailPage({
   const resolvedParams = await params;
   const slug = String(resolvedParams?.slug ?? "").trim();
 
-  const clients = await readClientsData();
+  const clients = await getClientsBlog();
+
+  const normalizedSlug = slug.toLowerCase().trim();
 
   const client = (clients || []).find((c: any) => {
-    const s = (c.blog_slug ?? c.blogSlug ?? c.slug ?? "").toString().trim();
-    return s === slug;
+    const s = (c.blog_slug ?? c.blogSlug ?? "")
+      .toString()
+      .toLowerCase()
+      .trim();
+    return s === normalizedSlug;
   });
 
   if (!client) {
@@ -129,16 +134,7 @@ export default async function Blog2DetailPage({
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
 
-            {client.blog_slug && (
-              <div className="mt-6">
-                <a
-                  href={`/blog/${client.blog_slug}`}
-                  className="inline-block bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition"
-                >
-                  Read full case study
-                </a>
-              </div>
-            )}
+            
           </div>
         </article>
       </div>
