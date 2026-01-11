@@ -21,7 +21,7 @@ const services: ServiceItem[] = [
   { label: "Content Marketing", iconSrc: "/images/Contentmarketting.png" },
 ];
 
-export default function HorizontalScrollWebsite() {
+export default function Home() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const verticalSectionsRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -1980,7 +1980,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
       {/* Spacer for total scroll height */}
       <div
         style={{
-          height: spacerHeight ? `${Math.max(0, spacerHeight + 50)}px` : "1600vh",
+          height: spacerHeight ? `${Math.max(0, spacerHeight)}px` : "0px",
         }}
       />
       {/* Floating scroll-to-top button (desktop) */}
