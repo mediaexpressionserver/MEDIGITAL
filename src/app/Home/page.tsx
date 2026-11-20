@@ -1407,7 +1407,7 @@ return (
 
 
 
-    <div className="absolute right-[-30px] top-[-50px] h-[480px] w-[2px] bg-gray-500"></div>
+    <div className="absolute right-[-30px] top-[-35px] h-[540px] w-[2px] bg-gray-500"></div>
   </div>
 
   {/* Center Hero Text */}

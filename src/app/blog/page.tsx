@@ -41,7 +41,7 @@ export default function BlogListPage() {
     fetchClients();
   }, []);
 
-  const INITIAL_COUNT = 9;
+  const INITIAL_COUNT = 10;
   const initialPosts = clients.slice(0, INITIAL_COUNT);
   const remainingPosts = clients.slice(INITIAL_COUNT);
 
