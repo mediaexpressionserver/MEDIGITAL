@@ -80,3 +80,10 @@ img {
   max-width: 100% !important;
   height: auto !important;
 }
+/* Keep the general page background white on mobile; section backgrounds remain independent. */
+@media (max-width: 1024px) {
+  html,
+  body {
+    background-color: #ffffff !important;
+  }
+}

@@ -44,6 +44,7 @@ export default function BlogListPage() {
   const INITIAL_COUNT = 10;
   const initialPosts = clients.slice(0, INITIAL_COUNT);
   const remainingPosts = clients.slice(INITIAL_COUNT);
+  const visibleClients = showAll ? clients : initialPosts;
 
   // Use the client's logo as the card image.
   const pickImage = (c: ClientBlog) => c.logoUrl || c.logo_url || c.logo || null;
@@ -73,10 +74,10 @@ export default function BlogListPage() {
         ) : (
           <>
             <section className="mx-auto grid max-w-6xl grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-              {initialPosts.map((client) => (
+              {visibleClients.map((client) => (
                 <article
                   key={client.id}
-                  className="w-full bg-white shadow-sm rounded-lg overflow-hidden hover:shadow-md transition"
+                  className="w-full overflow-hidden rounded-lg bg-white shadow-sm transition hover:shadow-md"
                   style={{ aspectRatio: "1 / 1" }}
                 >
                   <Link href={`/blog/${client.blogSlug}`} className="flex h-full flex-col">
@@ -87,10 +88,10 @@ export default function BlogListPage() {
                           alt={`${pickClientName(client)} logo`}
                           fill
                           style={{ objectFit: "contain" }}
-                          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                          sizes="(min-width: 1280px) 20vw, (min-width: 768px) 25vw, 50vw"
                         />
                       ) : (
-                        <div className="w-full h-full" aria-hidden="true" />
+                        <div className="h-full w-full" aria-hidden="true" />
                       )}
                     </div>
 
@@ -105,52 +106,14 @@ export default function BlogListPage() {
             </section>
 
             {remainingPosts.length > 0 && (
-              <>
-                <div
-                  className={`mt-10 transition-all duration-300 ${
-                    showAll ? "opacity-100 max-h-[2000px]" : "opacity-0 max-h-0 overflow-hidden"
-                  }`}
+              <div className="mt-8 text-center">
+                <button
+                  onClick={() => setShowAll((show) => !show)}
+                  className="inline-flex items-center gap-2 rounded bg-white px-6 py-2 text-black transition hover:bg-[#C4C6C8]"
                 >
-                  <div className="mx-auto grid max-w-6xl grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-                    {remainingPosts.map((client) => (
-                      <article
-                        key={client.id}
-                        className="w-full bg-white shadow-sm rounded-lg overflow-hidden hover:shadow-md transition"
-                  style={{ aspectRatio: "1 / 1" }}
-                      >
-                        <Link href={`/blog/${client.blogSlug}`} className="flex h-full flex-col">
-                          <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-white p-4">
-                            {pickImage(client) ? (
-                              <Image
-                                src={pickImage(client) as string}
-                                alt={`${pickClientName(client)} logo`}
-                                fill
-                                style={{ objectFit: "contain" }}
-                              />
-                            ) : (
-                              <div className="w-full h-full" aria-hidden="true" />
-                            )}
-                          </div>
-                          <div className="px-3 py-2 text-center">
-                            <h2 className="line-clamp-2 text-sm font-semibold sm:text-base">
-                              {pickClientName(client)}
-                            </h2>
-                          </div>
-                        </Link>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="text-center mt-10">
-                  <button
-                    onClick={() => setShowAll((s) => !s)}
-                    className="inline-flex items-center gap-2 px-6 py-2 bg-white text-black rounded hover:bg-[#C4C6C8] transition"
-                  >
-                    {showAll ? "Show less" : `Load more (${remainingPosts.length})`}
-                  </button>
-                </div>
-              </>
+                  {showAll ? "Show less" : `Load more (${remainingPosts.length})`}
+                </button>
+              </div>
             )}
           </>
         )}
