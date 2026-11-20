@@ -175,12 +175,12 @@ export default function ClientsCarousel({
   return (
     <>
       <style jsx global>{`
-        @keyframes clients-carousel-back-and-forth {
+        @keyframes clients-carousel-infinite {
           from { transform: translateX(0); }
           to { transform: translateX(-50%); }
         }
         .client-carousel-track {
-          animation: clients-carousel-back-and-forth 32s ease-in-out infinite alternate;
+          animation: clients-carousel-infinite 32s linear infinite;
           will-change: transform;
         }
       `}</style>

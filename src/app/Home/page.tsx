@@ -1057,7 +1057,7 @@ useEffect(() => {
 <section id = "portfoliodesktop"
   className="min-h-screen flex flex-col justify-center relative bg-cover bg-center bg-no-repeat"
   style={{
-    backgroundImage: "url('/images/Web page1.PNG')",
+    backgroundImage: "url('/images/Web page.webp')",
   }}
 >
   {/* Dark overlay */}
@@ -1637,7 +1637,7 @@ return (
   data-horizontal-section
   id="portfoliodesktop"
   className="w-screen h-screen relative flex items-center justify-between overflow-visible  translate-x-0 bg-cover bg-center bg-no-repeat"
-  style={{ backgroundImage: "url('/images/Web page1.PNG')" }}
+  style={{ backgroundImage: "url('/images/Web page.webp')" }}
 >
   {/* Left side - Rectangle image */}
   <div className="w-1/2 relative h-screen flex items-center justify-start translate-x-[156px]">
