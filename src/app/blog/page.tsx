@@ -8,7 +8,10 @@ import Header from "@/components/Header";
 type ClientBlog = {
   id: string;
   clientName: string;
-  logoUrl: string;
+  logoUrl?: string;
+  logo_url?: string;
+  logo?: string;
+  client_name?: string;
   blogTitle: string;
   blogSlug: string;
   blogBodyHtml: string;
@@ -42,9 +45,10 @@ export default function BlogListPage() {
   const initialPosts = clients.slice(0, INITIAL_COUNT);
   const remainingPosts = clients.slice(INITIAL_COUNT);
 
-  // helper: pick a display image (feature image first, then first of images array)
-  const pickImage = (c: ClientBlog) =>
-    c.blogFeatureImageUrl || (c.images && c.images.length > 0 ? c.images[0] : null);
+  // Use the client's logo as the card image.
+  const pickImage = (c: ClientBlog) => c.logoUrl || c.logo_url || c.logo || null;
+  const pickClientName = (c: ClientBlog) =>
+    c.clientName || c.client_name || c.blogTitle || "Client";
 
   return (
     <main
@@ -56,7 +60,7 @@ export default function BlogListPage() {
         <Header />
 
         <section className="text-center mb-10">
-          <h1 className="text-4xl font-bold mb-3 text-white">Our Clients&apos; Stories</h1>
+          <h1 className="text-4xl font-bold mb-3 text-white">Our Client&apos;s Stories</h1>
           <p className="text-gray-200 max-w-xl mx-auto">
             Explore how our clients achieved success through MeDigital.
           </p>
@@ -68,41 +72,32 @@ export default function BlogListPage() {
           <p className="text-center text-white">No client blogs available.</p>
         ) : (
           <>
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <section className="mx-auto grid max-w-6xl grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
               {initialPosts.map((client) => (
                 <article
                   key={client.id}
-                  className="bg-white shadow-sm rounded overflow-hidden hover:shadow-md transition"
+                  className="w-full bg-white shadow-sm rounded-lg overflow-hidden hover:shadow-md transition"
+                  style={{ aspectRatio: "1 / 1" }}
                 >
-                  <Link href={`/blog/${client.blogSlug}`} className="block">
-                    <div className="relative h-48 w-full overflow-hidden bg-gray-100">
+                  <Link href={`/blog/${client.blogSlug}`} className="flex h-full flex-col">
+                    <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-white p-4">
                       {pickImage(client) ? (
                         <Image
                           src={pickImage(client) as string}
-                          alt={client.blogTitle}
+                          alt={`${pickClientName(client)} logo`}
                           fill
                           style={{ objectFit: "contain" }}
                           sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
-                          No image
-                        </div>
+                        <div className="w-full h-full" aria-hidden="true" />
                       )}
                     </div>
 
-                    <div className="p-4">
-                      <h2 className="font-semibold text-lg mb-2">{client.blogTitle}</h2>
-                      <p
-                        className="text-sm text-gray-600 line-clamp-3"
-                        dangerouslySetInnerHTML={{
-                          __html: (client.blogBodyHtml || "").substring(0, 120) + "...",
-                        }}
-                      />
-                      <div className="flex items-center justify-between text-xs text-gray-500 mt-3">
-                        <span>{client.clientName}</span>
-                        <span>{new Date(client.createdAt).toLocaleDateString()}</span>
-                      </div>
+                    <div className="px-3 py-2 text-center">
+                      <h2 className="line-clamp-2 text-sm font-semibold sm:text-base">
+                        {pickClientName(client)}
+                      </h2>
                     </div>
                   </Link>
                 </article>
@@ -116,39 +111,30 @@ export default function BlogListPage() {
                     showAll ? "opacity-100 max-h-[2000px]" : "opacity-0 max-h-0 overflow-hidden"
                   }`}
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="mx-auto grid max-w-6xl grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
                     {remainingPosts.map((client) => (
                       <article
                         key={client.id}
-                        className="bg-white shadow-sm rounded overflow-hidden hover:shadow-md transition"
+                        className="w-full bg-white shadow-sm rounded-lg overflow-hidden hover:shadow-md transition"
+                  style={{ aspectRatio: "1 / 1" }}
                       >
-                        <Link href={`/blog/${client.blogSlug}`} className="block">
-                          <div className="relative h-64 w-full overflow-hidden bg-gray-100">
+                        <Link href={`/blog/${client.blogSlug}`} className="flex h-full flex-col">
+                          <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-white p-4">
                             {pickImage(client) ? (
                               <Image
                                 src={pickImage(client) as string}
-                                alt={client.blogTitle}
+                                alt={`${pickClientName(client)} logo`}
                                 fill
                                 style={{ objectFit: "contain" }}
                               />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
-                                No image
-                              </div>
+                              <div className="w-full h-full" aria-hidden="true" />
                             )}
                           </div>
-                          <div className="p-4">
-                            <h2 className="font-semibold text-lg mb-2">{client.blogTitle}</h2>
-                            <p
-                              className="text-sm text-gray-600 line-clamp-4"
-                              dangerouslySetInnerHTML={{
-                                __html: (client.blogBodyHtml || "").substring(0, 160) + "...",
-                              }}
-                            />
-                            <div className="flex items-center justify-between text-xs text-gray-500 mt-3">
-                              <span>{client.clientName}</span>
-                              <span>{new Date(client.createdAt).toLocaleDateString()}</span>
-                            </div>
+                          <div className="px-3 py-2 text-center">
+                            <h2 className="line-clamp-2 text-sm font-semibold sm:text-base">
+                              {pickClientName(client)}
+                            </h2>
                           </div>
                         </Link>
                       </article>

@@ -43,7 +43,12 @@ export default async function Blog2DetailPage({
     );
   }
 
-  const title = client.blog_title ?? client.blogTitle ?? "Untitled";
+  const title =
+    client.client_name ??
+    client.clientName ??
+    client.blog_title ??
+    client.blogTitle ??
+    "Untitled";
   const bodyHtml = client.blog_body_html ?? client.blogBodyHtml ?? "";
 
   const images: string[] =
@@ -53,21 +58,16 @@ export default async function Blog2DetailPage({
       ? client.image
       : (client.images || client.image || []) as string[];
 
-  // prefer logo fields for the feature image (use logo as feature image);
-  // fall back to any existing feature/image if no logo is present
+  // Use the client logo as the blog detail image.
   const feature =
-    client.logo ??
-    client.logo_url ??
-    client.logoUrl ??
-    client.brand_logo ??
-    client.brandLogo ??
-    client.logo_image ??
-    client.logoImage ??
-    client.blog_feature_image ??
-    client.blogFeatureImage ??
-    client.blog_feature_image_url ??
-    client.blogFeatureImageUrl ??
-    (images && images.length > 0 ? images[0] : null);
+    client.logo_url ||
+    client.logoUrl ||
+    client.logo ||
+    client.brand_logo ||
+    client.brandLogo ||
+    client.logo_image ||
+    client.logoImage ||
+    null;
 
   // normalize videos
   const videosRaw =
@@ -102,15 +102,15 @@ export default async function Blog2DetailPage({
 
         <article className="bg-white rounded-lg overflow-hidden min-h-screen">
           {feature ? (
-            <div className="relative w-full h-64 md:h-96 bg-white flex items-center justify-center overflow-hidden">
+            <div className="relative w-full h-40 md:h-56 bg-white flex items-center justify-center overflow-hidden">
               {/* Preserve image aspect ratio with whitespace; use `object-contain` */}
               <Image
                 src={feature}
-                alt={title}
+                alt={`${title} logo`}
                 fill
                 priority
-                sizes="100vw"
-                style={{ objectFit: "contain", objectPosition: "center top" }}
+                sizes="(min-width: 768px) 50vw, 100vw"
+                style={{ objectFit: "contain", objectPosition: "center" }}
               />
             </div>
           ) : (
