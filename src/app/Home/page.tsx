@@ -12,18 +12,68 @@ import useForceRepaintOnNav from "@/hooks/useForceRepaintOnNav";
 import { StaticImport } from "next/dist/shared/lib/get-img-props";
 
 const services: ServiceItem[] = [
-  { label: "Social Media Marketing", iconSrc: "/images/Socialmediamarketting.png" },
-  { label: "Google Ads", iconSrc: "/images/Googleads.png" },
-  { label: "Performance Marketing", iconSrc: "/images/PFMarketing.png" },
-  { label: "Organic Promotions", iconSrc: "/images/Organicmarketing.png" },
-  { label: "Influencer Marketing", iconSrc: "/images/Influencer marketting.png" },
-  { label: "Email Marketing", iconSrc: "/images/Emailmarketting.png" },
-  { label: "Content Marketing", iconSrc: "/images/Contentmarketting.png" },
+  {
+    label: "Social Media Management",
+    iconSrc: "/images/Socialmediamarketting.png",
+    description:
+      "We plan, create and manage social media that keeps your brand relevant and your audience engaged.",
+    
+  },
+  {
+    label: "Google Ads",
+    iconSrc: "/images/Googleads.png",
+    description:
+      "Show up when it matters. We put your brand in front of people already looking for what you offer.",
+ 
+  },
+  {
+    label: "Performance Marketing",
+    iconSrc: "/images/PFMarketing.png",
+    description:
+      "Less guesswork. More results. We run and optimise campaigns built around leads, conversions and growth.",
+   
+  },
+  {
+    label: "SEO & Organic Visibility",
+    iconSrc: "/images/Organicmarketing.png",
+    description:
+      "Be easier to find. We help your brand rank better and get discovered by the right people.",
+  
+  },
+  {
+    label: "Influencer & Creator Marketing",
+    iconSrc: "/images/Influencer marketting.png",
+    description:
+      "The right people. The right conversations. We bring brands and creators together to reach the right audiences.",
+    
+  },
+  {
+    label: "Email Marketing & Automation",
+    iconSrc: "/images/Emailmarketting.png",
+    description:
+      "Stay in the conversation. We create emails and automated journeys that turn interest into action.",
+   
+  },
+  {
+    label: "Content Strategy & Creation",
+    iconSrc: "/images/Contentmarketting.png",
+    description:
+      "Words, visuals and stories that make people stop, look and remember.",
+  
+  },
+  {
+    label: "PR and Film Promotion",
+    iconSrc: "/images/Prandfilmproduction.png",
+    description:
+      "We build buzz around your brand and bring films into the spotlight through strategic publicity and promotion.",
+   
+  },
 ];
 
 export default function Home() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const verticalSectionsRef = useRef<HTMLDivElement | null>(null);
+  const desktopFooterRef = useRef<HTMLElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const logoScrollRef = useRef<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -69,7 +119,12 @@ export default function Home() {
 
   };
 
-  const imageSrc = (activeLogo as any)?.logo || (activeLogo as any)?.logoUrl || (activeLogo as any)?.image;
+const imageSrc =
+  activeLogo?.src?.trim() ||
+  (activeLogo as any)?.logo?.trim() ||
+  (activeLogo as any)?.logoUrl?.trim() ||
+  (activeLogo as any)?.image?.trim() ||
+  null;
 
 {imageSrc ? (
   <div className="relative w-32 sm:w-40 md:w-48 h-16 sm:h-20 md:h-24 mx-auto">
@@ -512,16 +567,25 @@ useEffect(() => {
 
     const bufferZone = vh * 0.8;
     const transitionZone = vh * 1.2;
-    const verticalSections = 4.7;
 
+    // Match the scroll spacer to the real height of the vertical sections.
+    // This prevents extra scrolling after the footer has finished.
+    const footerBottom = desktopFooterRef.current
+      ? desktopFooterRef.current.offsetTop + desktopFooterRef.current.offsetHeight
+      : 0;
+    const verticalContentHeight =
+      footerBottom || verticalSectionsRef.current?.scrollHeight || 0;
     const total =
       horizontalScrollDistance +
       bufferZone +
       transitionZone +
-      vh * verticalSections;
+      verticalContentHeight;
 
-    // HARD FLOOR — never allow 0
     setSpacerHeight(Math.max(vh, total));
+
+    if (verticalSectionsRef.current) {
+      verticalSectionsRef.current.style.height = `${verticalContentHeight}px`;
+    }
 
     if (containerRef.current) {
       containerRef.current.style.width = `${totalWidth}px`;
@@ -830,18 +894,26 @@ useEffect(() => {
 
   {/* Updated Text */}
   <div
-    className="transform text-4xl font-extrabold text-white leading-snug translate-y-[80px] landscape:-translate-y-[80px] landscape:translate-x-[200px]"
-    style={{
-      textShadow: `
-        -2px 0 0 #D59A3F,
-        2px 0 0 #AF2648
-      `,
-    }}
-  >
-    <span>
-      Digital is <br /> what&apos;s <br /> happening.
-    </span>
-  </div>
+  className="transform text-4xl font-extrabold text-white leading-snug translate-y-[80px] landscape:-translate-y-[80px] landscape:translate-x-[200px]"
+  style={{
+    textShadow: `
+      -2px 0 0 #D59A3F,
+      2px 0 0 #AF2648
+    `,
+  }}
+>
+  <span>
+    Less noise.<br />
+    More impact.
+  </span>
+
+</div>
+
+{/* Supporting Text */}
+<p className="mt-24 max-w-md text-lg font-normal leading-relaxed text-white/80 text-center self-center">
+  We make digital work that gets noticed, starts conversations and moves
+  brands forward.
+</p>
 
   {/* Chevron Down */}
   <div className="translate-y-[180px] landscape:translate-y-[-10px]">
@@ -858,21 +930,27 @@ useEffect(() => {
 >
   <div className="flex-1 flex flex-col justify-end items-start text-left pb-12">
   <div className="bg-black/60 backdrop-blur-sm p-6 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.6)] text-white w-full max-w-[100%] mt-[100px]">
+
     <h2 className="text-4xl font-extrabold text-[#EEAA45] leading-tight mb-6 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.6)]">
-      Ideas That<br />Break<br />Through.
+      A little different by design.
     </h2>
-                   <p>
-      ME Digital is the creative and digital arm of Media Expression, a trusted media group shaping brands since 1995. Backed by decades of experience and guided by the vision of Mr. Sibi Chavara, we bring strategic clarity together with bold, contemporary creativity—helping brands stand out, speak clearly, and stay remembered.
+
+    <p>
+      Creative thinking. Digital doing.
     </p>
+
     <p className="mt-4">
-      Every idea starts with potential. We uncover insights, explore fresh perspectives, and shape concepts that feel relevant and alive. Our approach balances intuition with strategy, ensuring each idea is purposeful and well-defined. 
-       </p>
-    <p className="mt-4">
-      We refine with intent—challenging, evolving, and sharpening ideas until the message feels effortless and confident. Creativity, for us, is not a one-time spark but a disciplined pursuit of better thinking and stronger expression.
-       </p>
-    <p className="mt-4">
-      Because for us, “good enough” is never enough.
+      The creative and digital arm of Media Expression, we bring ideas, strategy and technology together to help brands stand out.
     </p>
+
+    <p className="mt-4">
+      We think beyond the obvious and make every brief count.
+    </p>
+
+    <p className="mt-4 italic">
+      Backed by Media Expression since 1995. Built for what&apos;s next.
+    </p>
+
   </div>
 </div>
 </section>
@@ -887,12 +965,12 @@ useEffect(() => {
     {/* Heading (mobile-scaled version of desktop heading) */}
     <div className="text-center mb-6">
       <h2 className="text-3xl font-extrabold leading-snug">
-        Need a digital<br />marketing partner?
-      </h2>
-      <p className="mt-3 text-sm text-black/90">
-        Marketing doesn&apos;t have to be complicated. With us, it&apos;s
-        smart, simple, and effective. Let&apos;s get started.
-      </p>
+  The right mix.<br/>The right move.
+</h2>
+<p className="mt-3 text-sm text-black/90">
+  Every brand is different. We find the right mix of creativity, content and digital to move yours
+  forward.
+</p>
     </div>
 
    
@@ -911,9 +989,9 @@ useEffect(() => {
   </div>
 </section>
 
-{/* Mobile Section 4 - Our Way */}
+{/* Mobile Section 4 - How We Make It Happen */}
 <section
-  className="min-h-screen text-white p-6 flex flex-col justify-center rounded-b-[3rem] overflow-hidden md:hidden relative z-10"
+  className="relative z-10 flex min-h-screen flex-col justify-center overflow-hidden rounded-b-[3rem] p-6 text-white md:hidden"
   style={{
     backgroundImage: "url('/images/digital-marketing.png')",
     backgroundSize: "cover",
@@ -921,114 +999,56 @@ useEffect(() => {
     backgroundRepeat: "no-repeat",
   }}
 >
-  {/* Content */}
+  <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
+
   <div className="relative z-10">
-    <div className="text-center mb-8">
-      <h2 className="text-5xl font-extrabold text-[#EEAA45] mb-6">
-        Our Way
+    <header className="mb-8 text-center">
+      <h2 className="mb-3 text-4xl font-extrabold text-[#EEAA45]">
+        How We Make It Happen.
       </h2>
-    </div>
-
-    <div className="space-y-8">
-      <div className="text-center">
-        <h3 className="text-2xl font-extrabold text-[#EEAA45] mb-2">Listen</h3>
-        <p className="text-white text-sm leading-relaxed">
-          Every great idea begins with listening. We tune in closely to
-          understand who our clients are, what they value, and what they
-          truly need.
-        </p>
-      </div>
-
-      <div className="text-center">
-        <h3 className="text-2xl font-extrabold text-[#EEAA45] mb-2">Reflect</h3>
-        <p className="text-white text-sm leading-relaxed">
-          Clear, thoughtful thinking is where creativity sparks. The
-          sharper the thought, the stronger the idea.
-        </p>
-      </div>
-
-      <div className="text-center">
-        <h3 className="text-2xl font-extrabold text-[#EEAA45] mb-2">Create</h3>
-        <p className="text-white text-sm leading-relaxed">
-          Ideas alone are just words. When brought to life with purpose and
-          precision, they evolve into impact — and sometimes, into legacies.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-{/* Mobile Section 5 - Design Process */}
-<section
-  className="min-h-[100px] p-6 pt-20 flex flex-col justify-start relative bg-cover bg-center bg-no-repeat -mt-16"
-  style={{
-    backgroundImage: "url('/images/laptop-table.png')",
-  }}
->
-  {/* Optional dark overlay */}
-  <div className="absolute inset-0 bg-black/40"></div>
-
-  {/* Content wrapper with extra top spacing */}
-  <div className="relative z-10 pt-[100px]">
-    {/* Section Heading */}
-    <div className="text-center mb-16">
-      <h2 className="text-3xl font-extrabold text-[#EEAA45] mb-4">
-        Our Design Process
-      </h2>
-      <p className="text-gray-200 text-base leading-relaxed">
-        Reboot Your Brand in{" "}
-        <span className="text-[#EEAA45]">4 Daring Steps.</span>
+      <p className="text-sm leading-relaxed text-white">
+        Good work starts with good thinking. Here&apos;s how we get there.
       </p>
-    </div>
+    </header>
 
-    {/* Cards Stack */}
-    <div className="relative flex flex-col items-center">
-      {/* Card 1 */}
-      <div className="bg-[#EEAA45] text-white p-8 pt-[80px] h-80 w-[350px] rounded-2xl relative z-50 shadow-lg">
-        <h3 className="text-2xl font-extrabold mb-4">Connect & Collaborate</h3>
-        <p className="text-base leading-relaxed">
-          We begin by immersing ourselves in your brand&apos;s universe. Our
-          international client base feeds on trust, enduring partnerships, and
-          solid referrals.
-        </p>
-      </div>
-
-      {/* Card 2 */}
-      <div className="bg-white text-gray-800 p-8 pt-[80px] h-80 w-[350px] rounded-b-2xl relative z-40 -translate-y-12 shadow-lg">
-        <h3 className="text-2xl font-extrabold text-[#EEAA45] mb-4">
-          Define Your Vision
-        </h3>
-        <p className="text-base leading-relaxed">
-          Brilliant campaigns begin with crystal-clear objectives. We reveal your
-          brand&apos;s purpose and develop targets that don&apos;t merely reach for the stars.
-        </p>
-      </div>
-
-      {/* Card 3 */}
-      <div className="bg-[#EEAA45] text-white p-8 pt-[80px] h-80 w-[350px] rounded-b-2xl relative z-30 -translate-y-24 shadow-lg">
-        <h3 className="text-2xl font-extrabold mb-4">
-          Develop a Winning Strategy
-        </h3>
-        <p className="text-base leading-relaxed">
-          Our digital specialists don&apos;t merely plan; they create. We develop a
-          vibrant, results-driven media strategy.
-        </p>
-      </div>
-
-      {/* Card 4 */}
-      <div className="bg-white text-gray-800 p-8 pt-[80px] h-80 w-[350px] rounded-b-2xl relative z-20 -translate-y-36 shadow-lg">
-        <h3 className="text-2xl font-extrabold text-[#EEAA45] mb-4">
-          Make It Happen
-        </h3>
-        <p className="text-base leading-relaxed">
-          Concepts are only as good as their implementation. Our service and
-          marketing teams work diligently.
-        </p>
-      </div>
-
+    <div className="space-y-4">
+      {[
+        {
+          title: "Listen & Understand",
+          description: "We get to know your brand, audience and goals.",
+        },
+        {
+          title: "Find the Direction",
+          description: "We find the insight and idea worth pursuing.",
+        },
+        {
+          title: "Make the Work",
+          description:
+            "We turn the thinking into creative that gets things moving.",
+        },
+        {
+          title: "Launch & Learn",
+          description:
+            "We put it out there, track the results and make it better.",
+        },
+      ].map((step) => (
+        <details
+          key={step.title}
+          className="group rounded-xl border border-[#EEAA45]/70 bg-black/40 p-4 open:bg-[#EEAA45]"
+        >
+          <summary className="cursor-pointer list-none text-lg font-bold text-[#EEAA45] marker:hidden group-open:text-black">
+            {step.title}
+          </summary>
+          <p className="mt-3 text-sm leading-relaxed text-black">
+            {step.description}
+          </p>
+        </details>
+      ))}
     </div>
   </div>
 </section>
+
+
 
 
 
@@ -1091,15 +1111,35 @@ useEffect(() => {
 
   <div className="relative z-10 flex-1 flex flex-col justify-center items-center">
     {/* Heading */}
-    <div className="text-center mb-8">
-      <h2 className="text-7xl font-bold text-[#EEAA45] mb-4">
-        Let&apos;s Talk!
-      </h2>
-      <p className="text-white text-sm leading-relaxed max-w-md mx-auto">
-        Ready to elevate your brand? Fill our quick <br></br>form, and
-        we&apos;ll connect soon.  Prefer email?<br></br>Reach us at <Link href="mailto:medigital2000@gmail.com" className="text-[#EEAA45]">medigital2000@gmail.com</Link>
-      </p>
-    </div>
+    <div className="mb-8 text-center">
+  <h2 className="mb-4 text-5xl font-bold text-[#EEAA45]">
+    Less talking.<br />
+    More showing.
+  </h2>
+
+  <p className="mx-auto max-w-md text-sm leading-relaxed text-white">
+    Different brands. Different briefs. Work we&apos;re proud to put out there.
+    <br />
+    Take a look around.
+  </p>
+
+  <div className="mx-auto my-6 h-px w-full max-w-md bg-white" />
+
+  <h3 className="mb-3 text-4xl font-bold text-[#EEAA45]">
+    Got a good idea?
+  </h3>
+
+  <p className="mx-auto max-w-md text-sm leading-relaxed text-white">
+    Need a digital marketing partner? Have a brief in mind? Let&apos;s talk.
+  </p>
+
+  <Link
+    href="mailto:medigital2000@gmail.com"
+    className="mt-4 inline-block text-[#EEAA45] underline underline-offset-4"
+  >
+    Start a conversation.
+  </Link>
+</div>
 
     {/* Contact Form Card */}
     <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-6 w-full max-w-md">
@@ -1172,10 +1212,13 @@ useEffect(() => {
   {/* Grid Content - stacked for mobile */}
   <div className="w-full max-w-md grid grid-cols-1 gap-8 text-center">
     <div>
-      <h3 className="text-lg font-semibold mb-2">ABOUT US</h3>
-      <p className="text-gray-300 leading-relaxed text-sm">
-        Our dedicated media strategies has proven effective for numerous credible clients, all being leading players in the industry.
-      </p>
+      <h3 className="mb-2 text-lg font-semibold">About ME Digital</h3>
+<p className="text-sm leading-relaxed text-gray-300">
+  Creative thinking. Digital execution. Work that moves brands forward.
+</p>
+<p className="mt-2 text-sm italic leading-relaxed text-gray-400">
+  The creative and digital arm of Media Expression. Established 1995.
+</p>
     </div>
 
     <div>
@@ -1193,10 +1236,10 @@ useEffect(() => {
         +91 88482 26408
       </Link>
       <Link
-        href="tel:+9104842808241"
+        href="tel:+9104842808240"
         className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
       >
-        0484 2808241
+        0484 2808240
       </Link>
       <br></br>
       <Link
@@ -1377,16 +1420,26 @@ return (
         `,
       }}
     >
-      <span>
-        Digital is <br /> what&apos;s <br /> happening.
-      </span>
+       <span>
+      Less noise.<br />
+      More impact.
+    </span>
+
+   
     </div>
+
+
+  {/* Supporting Text */}
+  <p className="mt-0 max-w-md text-lg font-normal leading-relaxed text-white/80 -translate-x-20">
+    We make digital work that gets noticed, starts conversations and moves
+    brands forward.
+  </p>
 
     <div className="flex items-center text-sm translate-y-[70px] -translate-x-28">
       <span className="text-[#FF9800] font-medium">Creative</span>
       <span className="mx-[20px] text-white text-lg">•</span>
 
-      <span className="text-[#FF9800] font-medium">Web</span>
+      <span className="text-[#FF9800] font-medium">Digital</span>
       <span className="mx-[20px] text-white text-lg">•</span>
 
       <span className="text-[#FF9800] font-medium">Performance</span>
@@ -1421,29 +1474,35 @@ return (
         {/* Section 2 - Ideas */}
         <section id="ourwaydesktop" data-horizontal-section className="w-screen h-screen flex relative">
           <div
-            className="flex-1 flex flex-col justify-center px-10 relative z-10 max-h-[80vh]"
-            style={{ transform: "translateX(calc(clamp(24px, 4vw, 100px) + 50px)) translateY(calc(clamp(18px, 6vh, 100px) + 40px))" }}
-          >
-            <h2 className="text-5xl font-extrabold text-[#EEAA45]">
-              Ideas That Break Through.
-            </h2>
-            <div className="mt-4 text-[15px] text-gray-600 w-full">
-              <div className="pr-4 max-w-[600px]">
-                               <p>
-      ME Digital is the creative and digital arm of Media Expression, a trusted media group shaping brands since 1995. Backed by decades of experience and guided by the vision of Mr. Sibi Chavara, we bring strategic clarity together with bold, contemporary creativity—helping brands stand out, speak clearly, and stay remembered.
-    </p>
-    <p className="mt-4">
-      Every idea starts with potential. We uncover insights, explore fresh perspectives, and shape concepts that feel relevant and alive. Our approach balances intuition with strategy, ensuring each idea is purposeful and well-defined. 
-       </p>
-    <p className="mt-4">
-      We refine with intent—challenging, evolving, and sharpening ideas until the message feels effortless and confident. Creativity, for us, is not a one-time spark but a disciplined pursuit of better thinking and stronger expression.
-       </p>
-    <p className="mt-4">
-      Because for us, “good enough” is never enough.
-    </p>
-              </div>
-            </div>
-          </div>
+  className="flex-1 flex flex-col justify-center px-10 relative z-10 max-h-[80vh]"
+  style={{ transform: "translateX(calc(clamp(24px, 4vw, 100px) + 50px)) translateY(calc(clamp(18px, 6vh, 100px) + 40px))" }}
+>
+  <h2 className="text-5xl font-extrabold text-[#EEAA45]">
+    A little different by design.
+  </h2>
+
+  <div className="mt-4 text-[15px] text-gray-600 w-full">
+    <div className="pr-4 max-w-[600px]">
+
+      <p>
+        Creative thinking. Digital doing.
+      </p>
+
+      <p className="mt-4">
+        The creative and digital arm of Media Expression, we bring ideas, strategy and technology together to help brands stand out.
+      </p>
+
+      <p className="mt-4">
+        We think beyond the obvious and make every brief count.
+      </p>
+
+      <p className="mt-4 italic">
+        Backed by Media Expression since 1995. Built for what&apos;s next.
+      </p>
+
+    </div>
+  </div>
+</div>
           <div className="flex-1 relative overflow-hidden">
             <Image
               src="/images/ofcework.png"
@@ -1477,21 +1536,21 @@ return (
 
   {/* Right column: text — use padding instead of translate to shift */}
   <div className="flex-1 min-w-0 translate-x-[-300px]">
-    <div className="max-w-2xl pl-6">
-      <h2 className="text-5xl lg:text-7xl font-extrabold text-black mb-4 leading-tight">
-        Need a <br />digital<br />marketing<br />partner?
-      </h2>
+  <div className="max-w-2xl pl-6">
+    <h2 className="text-5xl lg:text-7xl font-extrabold text-black mb-4 leading-tight">
+      The right mix. <br />The right move.
+    </h2>
 
-      <div className="w-3/4 h-[2px] bg-black my-4" />
+    <div className="w-3/4 h-[2px] bg-black my-4" />
 
-      <p className="text-gray-600 text-base lg:text-[15px] max-w-lg my-5">
-        Marketing doesn&apos;t have to be complicated. With us, it&apos;s smart,
-        simple, and effective. Let&apos;s get started.
-      </p>
+    <p className="text-gray-600 text-base lg:text-[15px] max-w-lg my-5">
+      Every brand is different. We find the right mix of creativity, content
+      and digital to move yours forward.
+    </p>
 
-      <div className="w-3/4 h-[2px] bg-black mt-4" />
-    </div>
+    <div className="w-3/4 h-[2px] bg-black mt-4" />
   </div>
+</div>
 </section>
       </div>
 
@@ -1500,7 +1559,7 @@ return (
         ref={verticalSectionsRef}
         className="fixed top-0 left-0 w-screen"
         style={{
-          height: `${viewportHeight * 5}px`, // Updated from 2 to 5
+          height: "auto",
           opacity: 0,
           pointerEvents: 'none',
           transform: 'translateY(100vh)',
@@ -1509,189 +1568,68 @@ return (
         }}
       >
         {/* Section 4 - Digital Marketing */}
-        <section 
-          className="w-screen h-screen relative flex flex-col justify-center items-center bg-black text-white"
-          style={{
-            backgroundImage: "url('/images/digital-marketing.png')",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundRepeat: "no-repeat",
-          }}
-        >
-          <div className="text-left z-10">
-  <h2
-    className="text-6xl font-extrabold text-[#EEAA45] mb-6 translate-x-[-370px] translate-y-[100px]"
-    style={{
-      textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)"
-    }}
-  >
-    Our Way
-  </h2>
-</div>
-
-          <div className="relative flex flex-col items-center text-center text-white mt-20 translate-y-[50px]">
-  {/* === Headings row === */}
-  <div className="grid grid-cols-3 gap-12 w-full max-w-5xl mb-3 "
+<section
+  className="relative flex h-screen w-screen flex-col items-center justify-center bg-black text-white"
   style={{
-      textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)"
-    }}
-  >
-    <div>
-      <h2 className="text-3xl font-extrabold text-[#e29a4d] mb-1">Listen</h2>
-    </div>
-    <div>
-      <h2 className="text-3xl font-extrabold text-[#e29a4d] mb-1">Reflect</h2>
-    </div>
-    <div>
-      <h2 className="text-3xl font-extrabold text-[#e29a4d] mb-1">Create</h2>
+    backgroundImage: "url('/images/digital-marketing.png')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+  }}
+>
+  <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
+
+  <div className="relative z-10 w-full max-w-6xl px-8">
+    <header className="mb-16 text-center">
+      <h2
+        className="mb-4 text-5xl font-extrabold text-[#EEAA45] md:text-6xl"
+        style={{ textShadow: "4px 4px 12px rgba(0, 0, 0, 0.6)" }}
+      >
+        How We Make It Happen.
+      </h2>
+      <p className="text-lg text-white md:text-xl">
+        Good work starts with good thinking. Here&apos;s how we get there.
+      </p>
+    </header>
+
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {[
+        {
+          title: "Listen & Understand",
+          description: "We get to know your brand, audience and goals.",
+        },
+        {
+          title: "Find the Direction",
+          description: "We find the insight and idea worth pursuing.",
+        },
+        {
+          title: "Make the Work",
+          description:
+            "We turn the thinking into creative that gets things moving.",
+        },
+        {
+          title: "Launch & Learn",
+          description:
+            "We put it out there, track the results and make it better.",
+        },
+      ].map((step) => (
+        <article
+          key={step.title}
+          className="group min-h-48 rounded-xl border border-[#EEAA45]/70 bg-black/40 p-6 transition-colors duration-300 hover:bg-[#EEAA45] focus-within:bg-[#EEAA45]"
+        >
+          <h3 className="text-xl font-bold text-[#EEAA45] transition-colors group-hover:text-black group-focus-within:text-black">
+            {step.title}
+          </h3>
+          <p className="mt-4 translate-y-2 text-base leading-relaxed text-black opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+            {step.description}
+          </p>
+        </article>
+      ))}
     </div>
   </div>
+</section>
+``
 
-  {/* === Orange line + white arrows === */}
-  <div className="relative w-full max-w-5xl mb-8">
-    {/* orange line */}
-    <div className="h-[2px] bg-[#e29a4d] w-full" />
-
-    {/* arrows */}
-    <div
-      className="absolute left-[16.6%] -translate-x-1/2"
-      style={{ top: "100%" }}
-    >
-      <div
-        style={{
-          width: 0,
-          height: 0,
-          borderLeft: "8px solid transparent",
-          borderRight: "8px solid transparent",
-          borderTop: "10px solid white",
-        }}
-      />
-    </div>
-    <div
-      className="absolute left-1/2 -translate-x-1/2"
-      style={{ top: "100%" }}
-    >
-      <div
-        style={{
-          width: 0,
-          height: 0,
-          borderLeft: "8px solid transparent",
-          borderRight: "8px solid transparent",
-          borderTop: "10px solid white",
-        }}
-      />
-    </div>
-    <div
-      className="absolute left-[83.3%] -translate-x-1/2"
-      style={{ top: "100%" }}
-    >
-      <div
-        style={{
-          width: 0,
-          height: 0,
-          borderLeft: "8px solid transparent",
-          borderRight: "8px solid transparent",
-          borderTop: "10px solid white",
-        }}
-      />
-    </div>
-  </div>
-
-  {/* === Paragraphs row === */}
-  <div className="grid grid-cols-3 gap-12 w-full max-w-5xl text-left">
-    {/* Listen */}
-    <div>
-      <p className="text-white text-[14px] leading-relaxed max-w-xs">
-        Every great idea begins with<br></br>
-listening. We tune in closely to<br></br>
-understand who our clients are,<br></br>
-what they value, and what they<br></br>
-truly need.
-      </p>
-    </div>
-
-    {/* Reflect */}
-    <div>
-      <p className="text-white text-[14px] leading-relaxed max-w-xs">
-        Clear, thoughtful thinking is<br></br>
-where creativity sparks. The<br></br>
-sharper the thought, the<br></br>
-stronger the idea.
-      </p>
-    </div>
-
-    {/* Create */}
-    <div>
-      <p className="text-white text-[14px] leading-relaxed max-w-xs">
-        Ideas alone are just words. When<br></br>
-brought to life with purpose and<br></br>
-precision, they evolve into impact — and sometimes, into<br></br>legacies.
-      </p>
-    </div>
-  </div>
-</div>
-        </section>
-
-      {/* Section 5 - Design Process */}
-      <section className="w-screen h-screen flex flex-col lg:flex-row overflow-hidden">
-        
-        {/* Left: Image side with overlay and text */}
-        <div className="relative w-full lg:w-[470px] h-[50vh] lg:h-full translate-x-[156px]">
-          <Image
-            src="/images/laptop-table.png"
-            alt="Design Process"
-            fill
-            className="object-cover object-center"
-            priority
-          />
-          <div className="absolute inset-0 bg-black bg-opacity-30" />
-
-       
-        </div>
-
-        {/* Right: Text side */}
-        
-        <div className="w-full lg:w-1/2 flex flex-col justify-center px-10 py-10 translate-x-[330px] translate-y-[-150px]">
-          <div className="mb-10">
-            <h2 className="text-[220px] font-extrabold text-[#EEAA45] leading-tight translate-x-[-160px] translate-y-[230px]">4</h2>
-            <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-extrabold text-[#EEAA45] leading-tight">Daring<br />Steps.</h2>
-            <p className="text-xl text-gray-700 mt-2">
-              Reboot Your Brand in <span className="text-[#EEAA45] font-semibold">4 Daring Steps.</span>
-            </p>
-          </div>
-
-          <div className="max-w-2xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 items-start" style={{ transform: 'translateX(-135px)' }}>
-                <div className="text-left" style={{ transform: 'translateX(-55px)' }}>
-                  <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Connect &amp; Collaborate</h3>
-                  <p className="text-sm text-gray-700">
-                    We begin by immersing ourselves in your brand&apos;s universe. Our international client base feeds on trust, partnerships, and solid referrals.
-                  </p>
-                </div>
-
-                <div className="text-left">
-                  <h3 className="text-2xl font-bold text-[#EEAA45] mb-2">Make It Happen</h3>
-                  <p className="text-sm text-gray-700">
-                    Concepts are only as good as their implementation. Our teams execute with precision and creativity to deliver impactful results.
-                  </p>
-                </div>
-              </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-2xl" style={{ transform: "translateX(clamp(-260px, -10vw, -190px)) translateY(clamp(18px, 6vh, 50px))" }}>
-              <div>
-                <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Define Your Vision</h3>
-                <p className="text-sm text-gray-600">
-                  Brilliant campaigns begin with clear objectives. We reveal your brand’s purpose and build a roadmap that connects strategy to results.
-                </p>
-              </div>
-              <div style={{ transform: "translateX(clamp(12px, 3vw, 50px))" }}>
-                <h3 className="text-2xl font-bold text-[#EEAA45] mb-1">Develop a Winning Strategy</h3>
-                <p className="text-sm text-gray-600">
-                  Our specialists craft distinctive, results-driven strategies tailored to your brand and audience.
-                </p>
-              </div>
-            </div>
-          </div>
-      </section>
 
 {/* Section 6 - Portfolio */}
 <section
@@ -1799,17 +1737,34 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
               />
               {/* Content overlay */}
               <div className="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex flex-col justify-center items-start p-8">
-                <h2 className="text-5xl font-bold text-[#EEAA45] mb-6">
-                  Let&apos;s<br />
-                  Talk!
-                </h2>
-                <p className="text-white text-sm leading-relaxed">
-                  Ready to elevate your brand? Fill our quick form, and<br />
-                  we&apos;ll connect soon. Prefer email? Reach us at<br />
-                   <Link href="mailto:medigital2000@gmail.com" className="text-[#EEAA45]">medigital2000@gmail.com</Link>
-      
-                </p>
-              </div>
+  <h2 className="text-5xl font-bold text-[#EEAA45] mb-6">
+    Less talking.<br />
+    More showing.
+  </h2>
+
+  <p className="text-white text-sm leading-relaxed">
+    Different brands. Different briefs. Work we&apos;re proud to put out there.
+    <br />
+    Take a look around.
+  </p>
+
+  <div className="w-full h-px bg-white my-6" />
+
+  <h3 className="text-3xl font-bold text-[#EEAA45] mb-3">
+    Got a good idea?
+  </h3>
+
+  <p className="text-white text-sm leading-relaxed">
+    Need a digital marketing partner? Have a brief in mind? Let&apos;s talk.
+  </p>
+
+  <Link
+    href="mailto:medigital2000@gmail.com"
+    className="mt-4 text-[#EEAA45] underline underline-offset-4"
+  >
+    Start a conversation.
+  </Link>
+</div>
             </div>
           </div>
 
@@ -1873,7 +1828,8 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
 
         {/* Section 8 - Search and Logos */}
         <section
-  className="w-screen py-20 px-6 bg-black text-white flex flex-col items-center justify-center"
+  ref={desktopFooterRef}
+  className="w-screen pt-12 pb-24 px-6 bg-black text-white flex flex-col items-center justify-center"
   style={{
     backgroundImage: "url('/images/Bg_1.png')",
     backgroundSize: "cover",
@@ -1886,13 +1842,13 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
 
     {/* ABOUT US */}
     <div>
-      <h3 className="text-lg font-semibold mb-4">ABOUT US</h3>
-      <p className="text-gray-300 leading-relaxed">
-        Our dedicated media strategies has
-        proven effective for numerous credible
-        clients, all being leading players in the
-        industry.
-      </p>
+     <h3 className="mb-4 text-lg font-semibold">About ME Digital</h3>
+<p className="leading-relaxed text-gray-300">
+  Creative thinking. Digital execution. Work that moves brands forward.
+</p>
+<p className="mt-3 leading-relaxed text-gray-400 italic">
+  The creative and digital arm of Media Expression. Established 1995.
+</p>
     </div>
 
     {/* CONTACTS */}
@@ -1922,10 +1878,10 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
       </Link>
       <br></br>
       <Link
-        href="tel:+9104842808241"
+        href="tel:+9104842808240"
         className="mt-4 font-semibold text-lg hover:text-[#EEAA45] transition-colors"
       >
-        0484 2808241
+        0484 2808240
       </Link>
 <br></br>
       <Link
@@ -1963,7 +1919,7 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   </div>
 
   {/* Social Media Icons */}
-  <div className="flex items-center justify-center space-x-8 mt-16 translate-y-[-50px]">
+  <div className="flex items-center justify-center space-x-8 mt-8">
     {[
       { src: "/images/Insta.png", alt: "Instagram", href: "https://www.instagram.com/me__digital/" },
       { src: "/images/Facebook.png", alt: "Facebook", href: "https://www.facebook.com/MediaExpressionDigital/" },
@@ -1989,8 +1945,8 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
   </div>
 
   {/* Bottom Text */}
-  <div className="w-full h-[1px] bg-gradient-to-r from-[#EEAA45] via-gray-500 to-[#EEAA45] mt-10 translate-y-[-80px]"></div>
-  <p className="text-gray-400 text-sm mt-10 translate-y-[-100px]">
+  <div className="w-full h-[1px] bg-gradient-to-r from-[#EEAA45] via-gray-500 to-[#EEAA45] mt-6"></div>
+  <p className="text-gray-400 text-sm mt-4">
     Media Expression © 2025. All rights reserved.
   </p>
 </section>
@@ -2000,6 +1956,8 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
 
       {/* Spacer for total scroll height */}
       <div
+        className="bg-white"
+        aria-hidden="true"
         style={{
           height: spacerHeight ? `${Math.max(0, spacerHeight)}px` : "0px",
         }}
@@ -2018,3 +1976,4 @@ precision, they evolve into impact — and sometimes, into<br></br>legacies.
     </div>
   );
 };
+

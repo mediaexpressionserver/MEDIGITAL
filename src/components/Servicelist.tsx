@@ -1,5 +1,6 @@
-// src/components/Servicelist.tsx
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Image from "next/image";
 
 export type ServiceItem = {
@@ -7,79 +8,104 @@ export type ServiceItem = {
   label: string;
   iconSrc?: string;
   iconAlt?: string;
+  description?: string;
 };
 
 type Props = {
   items: ServiceItem[];
-  pillHeight?: number; // height of the orange pill
-  iconSize?: number; // diameter of the white circle
-  iconInnerScale?: number; // how large the icon inside appears (0–1)
-  overlap?: number; // how much the white circle overlaps the pill (0.0–1.0)
+  pillHeight?: number;
+  iconSize?: number;
+  iconInnerScale?: number;
+  overlap?: number;
 };
 
 const ServicePillList: React.FC<Props> = ({
   items,
   pillHeight = 56,
-  iconSize = 64, // ⬅️ increased default from 48 → 64
+  iconSize = 64,
   iconInnerScale = 0.75,
-  overlap = 0.4, // ⬅️ increased overlap (0.25 was previous default)
+  overlap = 0.4,
 }) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
   return (
     <ul role="list" className="space-y-6">
       {items.map((it, idx) => {
-        const innerSize = Math.max(20, Math.round(iconSize * iconInnerScale));
-        const iconSrc = it.iconSrc ?? "/images/example.png";
-        const iconAlt = it.iconAlt ?? it.label;
+        const innerSize = Math.max(
+          20,
+          Math.round(iconSize * iconInnerScale)
+        );
+        const iconSrc = it.iconSrc?.trim();
 
         return (
           <li key={it.id ?? idx} className="relative">
-            <div className="flex items-center" style={{ height: pillHeight }}>
-              {/* White circular icon badge */}
+            <div className="flex w-full items-start">
+              {/* Decorative logo; it is not interactive. */}
               <div
                 aria-hidden="true"
-                className="flex items-center justify-center rounded-full bg-white shadow-md"
+                className="pointer-events-none relative z-20 flex shrink-0 items-center justify-center rounded-full bg-white shadow-md"
                 style={{
                   width: iconSize,
                   height: iconSize,
-                  marginLeft: -iconSize * overlap, // ⬅️ control overlap dynamically
-                  zIndex: 20,
+                  marginLeft: -iconSize * overlap,
+                  marginTop: (pillHeight - iconSize) / 2,
                 }}
               >
-                {/* next/image for optimized icons (explicit width/height to avoid CLS) */}
-                <div style={{ width: innerSize, height: innerSize, position: "relative" }}>
-                  <Image
-                    src={iconSrc}
-                    alt={iconAlt}
-                    width={innerSize}
-                    height={innerSize}
-                    style={{ objectFit: "contain" }}
-                    // For remote hosts, add their domain in next.config.js images.domains
-                    // e.g. images: { domains: ['placehold.co', 'cdn.example.com'] }
-                  />
-                </div>
+                {iconSrc && (
+                  <div
+                    className="relative"
+                    style={{ width: innerSize, height: innerSize }}
+                  >
+                    <Image
+                      src={iconSrc}
+                      alt=""
+                      fill
+                      sizes={`${innerSize}px`}
+                      className="object-contain"
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Orange pill */}
+              {/* The orange pill and white description expand in the list flow. */}
               <div
-                className="flex items-center pl-6 pr-6 rounded-full shadow-inner"
-                style={{
-                  background: "#EEAA45",
-                  height: pillHeight * 0.92,
-                  marginLeft: -iconSize * 0.2,
-                  flex: 1,
-                  zIndex: 10,
+                tabIndex={0}
+                role="group"
+                aria-label={it.label}
+                className={`relative min-w-0 flex-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-800 ${
+                  activeIndex === idx ? "z-30" : "z-10"
+                }`}
+                style={{ marginLeft: -iconSize * 0.2 }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                onMouseLeave={() => setActiveIndex(null)}
+                onFocus={() => setActiveIndex(idx)}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setActiveIndex(null);
+                  }
                 }}
               >
-                <span
-                  className="text-black font-medium text-base"
-                  style={{
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
+                <div
+                  className={`pointer-events-auto flex items-center rounded-full bg-[#EEAA45] px-6 shadow-inner transition-[border-radius] duration-200 ${
+                    activeIndex === idx ? "rounded-b-none" : ""
+                  }`}
+                  style={{ height: pillHeight * 0.92 }}
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  onPointerEnter={() => setActiveIndex(idx)}
                 >
-                  {it.label}
-                </span>
+                  <span className="pointer-events-none min-w-0 flex-1 truncate text-left text-base font-medium text-black">
+                    {it.label}
+                  </span>
+                </div>
+
+                <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${activeIndex === idx ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+                  <div className="overflow-hidden">
+                    <div className="rounded-b-2xl bg-white px-6 pb-4 pt-3 text-left text-sm leading-relaxed text-gray-800 shadow-md">
+                      {it.description ||
+                        "More information about this service will be available soon."}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </li>
